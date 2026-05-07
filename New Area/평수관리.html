@@ -1,0 +1,2822 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>아암센터 면적 관리</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; background: #eef2f7; user-select: none; }
+
+.app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+header {
+  background: linear-gradient(135deg, #1a3a5c, #2c5282);
+  color: white;
+  padding: 11px 24px;
+  font-size: 17px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+header span { font-size: 12px; font-weight: normal; opacity: 0.7; margin-left: 8px; }
+
+/* 단계 6: 인쇄 버튼 */
+.btn-print-header {
+  margin-left: auto;
+  padding: 5px 14px;
+  border: 1px solid rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.12);
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  color: white;
+  transition: all 0.2s;
+}
+.btn-print-header:hover { background: rgba(255,255,255,0.25); }
+.btn-ppt-header {
+  margin-left: 6px;
+  padding: 5px 14px;
+  border: 1px solid rgba(255,255,255,0.5);
+  background: rgba(255,165,0,0.25);
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  color: white;
+  transition: all 0.2s;
+}
+.btn-ppt-header:hover { background: rgba(255,165,0,0.5); }
+.btn-ppt-header:disabled { opacity: 0.5; cursor: wait; }
+.btn-summary-header {
+  margin-left: 6px;
+  padding: 5px 14px;
+  border: 1px solid rgba(255,255,255,0.5);
+  background: rgba(100,180,100,0.25);
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  color: white;
+  transition: all 0.2s;
+}
+.btn-summary-header:hover { background: rgba(100,180,100,0.5); }
+
+/* 단계 11: 요약 전용 모달 */
+.summary-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 1000;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+}
+.summary-modal-overlay.open { display: flex; }
+.summary-modal-box {
+  background: #fff;
+  border-radius: 10px;
+  width: 98%;
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  overflow: hidden;
+}
+.summary-modal-header {
+  background: linear-gradient(135deg, #1a3a5c, #2c5282);
+  color: white;
+  padding: 13px 20px;
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  font-weight: bold;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.summary-modal-header .mh-actions { margin-left: auto; display: flex; gap: 6px; }
+.summary-modal-header button {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 5px;
+  color: white;
+  cursor: pointer;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.summary-modal-header button:hover { background: rgba(255,255,255,0.3); }
+.summary-modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 24px 28px;
+}
+.modal-gtab {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+}
+.modal-gtab th, .modal-gtab td {
+  border: 1px solid #e2e8f0;
+  padding: 10px 18px;
+  text-align: center;
+  white-space: nowrap;
+}
+.modal-gtab th { background: #f7fafc; font-weight: 700; color: #4a5568; }
+.modal-gtab td:first-child { text-align: left; }
+.modal-gtab .modal-zero { color: #cbd5e0; font-size: 13px; }
+.modal-gtab .modal-total-row td { background: #ebf8ff; font-weight: 700; }
+.modal-cell-val { font-size: 17px; font-weight: 700; color: #1a365d; }
+.modal-cell-sub { font-size: 10px; color: #718096; margin-top: 2px; }
+.modal-co-name { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+.modal-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+
+/* PPT 요약표 위치 설정 모달 */
+.ppt-pos-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:2000; align-items:center; justify-content:center; padding:24px; }
+.ppt-pos-overlay.open { display:flex; }
+.ppt-pos-box { background:#fff; border-radius:10px; width:min(880px,95vw); max-height:calc(100vh - 48px); display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.4); overflow:hidden; }
+.ppt-pos-header { background:linear-gradient(135deg,#1a3a5c,#2c5282); color:white; padding:12px 18px; display:flex; align-items:center; font-size:14px; font-weight:bold; gap:10px; flex-shrink:0; }
+.ppt-pos-header .ph-actions { margin-left:auto; display:flex; gap:6px; }
+.ppt-pos-header button { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.4); border-radius:5px; color:white; cursor:pointer; padding:4px 12px; font-size:12px; font-family:inherit; }
+.ppt-pos-header button:hover { background:rgba(255,255,255,0.3); }
+.ppt-pos-body { padding:14px 18px 18px; overflow:auto; }
+.ppt-pos-hint { font-size:12px; color:#718096; margin-bottom:10px; }
+.ppt-slide-preview { position:relative; width:100%; aspect-ratio:1333/750; background:#F5F7FA; border:2px solid #dde3ec; border-radius:6px; overflow:hidden; }
+.ppt-table-handle { position:absolute; cursor:grab; box-shadow:0 2px 10px rgba(0,0,0,0.3); border-radius:3px; user-select:none; z-index:10; }
+.ppt-table-handle.dragging { cursor:grabbing; opacity:0.85; box-shadow:0 4px 18px rgba(0,0,0,0.4); }
+
+/* 단계 12: 분할 모드 */
+
+.tabs {
+  display: flex;
+  background: #2d4a7a;
+  padding: 0 20px;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.tab-btn {
+  padding: 10px 22px;
+  border: none;
+  background: transparent;
+  color: #a0b4cc;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: white; background: rgba(255,255,255,0.08); }
+.tab-btn.active { color: white; border-bottom-color: #63b3ed; background: rgba(255,255,255,0.1); font-weight: 600; }
+
+.main-container { display: flex; flex: 1; overflow: hidden; }
+
+.canvas-area {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px;
+  background: #f5f7fa;
+}
+
+.floor-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.floor-title { font-size: 15px; font-weight: 700; color: #1a202c; }
+
+.floor-note {
+  font-size: 11px;
+  color: #718096;
+  background: #edf2f7;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.sidebar {
+  width: 290px;
+  background: white;
+  border-left: 1px solid #dde3ec;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sidebar-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid #edf2f7;
+  flex-shrink: 0;
+}
+
+.sidebar-section h3 {
+  font-size: 11px;
+  font-weight: 700;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+
+.mode-row { display: flex; gap: 6px; margin-bottom: 10px; }
+
+.mode-btn {
+  flex: 1;
+  padding: 7px 6px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  transition: all 0.2s;
+  color: #4a5568;
+}
+.mode-btn:hover { border-color: #90cdf4; color: #2b6cb0; }
+.mode-btn.active { background: #ebf8ff; border-color: #4299e1; color: #2b6cb0; font-weight: 600; }
+
+/* 단계 2,3: 제외/수정 모드 버튼 */
+.mode-btn.exclude-active { background: #fff5f5; border-color: #fc8181; color: #c53030; font-weight: 600; }
+.mode-btn.edit-active    { background: #fffbeb; border-color: #f6c90e; color: #744210; font-weight: 600; }
+/* 단계 7: 셀 이름 모드 버튼 */
+.mode-btn.label-active   { background: #f0fff4; border-color: #68d391; color: #276749; font-weight: 600; }
+/* 단계 12: 스판 분할 모드 버튼 */
+.mode-btn.split-active   { background: #fff7ed; border-color: #ed8936; color: #9c4221; font-weight: 600; }
+
+.action-row { display: flex; gap: 6px; }
+.action-row-2 { display: flex; gap: 6px; margin-top: 6px; }
+
+.btn-clear, .btn-export {
+  flex: 1;
+  padding: 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.btn-clear { border: 1px solid #feb2b2; background: white; color: #e53e3e; }
+.btn-clear:hover { background: #fff5f5; }
+.btn-export { border: 1px solid #c6f6d5; background: white; color: #276749; }
+.btn-export:hover { background: #f0fff4; }
+
+/* 단계 5: JSON 버튼 */
+.btn-json-export, .btn-json-import {
+  flex: 1;
+  padding: 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.btn-json-export { border: 1px solid #bee3f8; background: white; color: #2b6cb0; }
+.btn-json-export:hover { background: #ebf8ff; }
+.btn-json-import { border: 1px solid #e9d8fd; background: white; color: #553c9a; }
+.btn-json-import:hover { background: #faf5ff; }
+
+.company-list { display: flex; flex-direction: column; gap: 5px; max-height: 240px; overflow-y: auto; }
+
+.co-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 8px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.co-item:hover { background: #f7fafc; }
+.co-item.active { border-color: #4299e1; background: #ebf8ff; }
+
+.co-color {
+  width: 22px; height: 22px;
+  border-radius: 4px;
+  border: 1px solid rgba(0,0,0,0.12);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.co-name {
+  flex: 1;
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  outline: none;
+  cursor: text;
+  font-family: inherit;
+  color: #2d3748;
+  min-width: 0;
+}
+
+.co-del {
+  width: 18px; height: 18px;
+  border: none; background: none;
+  color: #fc8181; cursor: pointer;
+  font-size: 15px; line-height: 1;
+  border-radius: 3px;
+  opacity: 0; transition: opacity 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.co-item:hover .co-del { opacity: 1; }
+
+.co-select {
+  width: 26px; height: 26px;
+  border-radius: 5px;
+  border: 2px solid rgba(0,0,0,0.15);
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: transparent;
+  transition: all 0.15s;
+  box-sizing: border-box;
+}
+.co-select.selected {
+  border: 2px solid #2b6cb0;
+  box-shadow: 0 0 0 2px rgba(66,153,225,0.45);
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+.btn-add-co {
+  margin-top: 8px;
+  width: 100%; padding: 7px;
+  border: 2px dashed #e2e8f0;
+  background: white; border-radius: 6px;
+  cursor: pointer; color: #a0aec0;
+  font-size: 13px; font-family: inherit;
+  transition: all 0.2s;
+}
+.btn-add-co:hover { border-color: #90cdf4; color: #4299e1; }
+
+/* Summary scroll area */
+.summary-scroll { flex: 1; overflow-y: auto; padding: 14px 16px; }
+
+/* 단계 8: 전체 층 합계 고정 패널 */
+.summary-global {
+  border-top: 2px solid #e2e8f0;
+  padding: 12px 16px;
+  background: #fafbfc;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.summary-global h3 {
+  font-size: 11px; font-weight: 700; color: #718096;
+  text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px;
+}
+.gtab {
+  width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap;
+}
+.gtab th {
+  background: #edf2f7; padding: 4px 6px; text-align: right;
+  font-weight: 700; color: #4a5568; border-bottom: 2px solid #e2e8f0;
+  font-size: 10px;
+}
+.gtab th:first-child { text-align: left; }
+.gtab td { padding: 4px 6px; border-bottom: 1px solid #f0f4f8; text-align: right; }
+.gtab td:first-child { text-align: left; }
+.gtab tr:hover td { background: #f9fafb; }
+.gtab .gtab-total td { font-weight: 700; border-top: 2px solid #e2e8f0; background: #edf2f7; }
+.gtab .gtab-zero { color: #cbd5e0; }
+
+.stab {
+  width: 100%; border-collapse: collapse;
+  font-size: 12px; margin-bottom: 14px;
+}
+.stab th {
+  background: #f7fafc; padding: 5px 7px;
+  text-align: left; font-weight: 600;
+  color: #4a5568; border-bottom: 2px solid #e2e8f0;
+  font-size: 11px;
+}
+.stab td { padding: 5px 7px; border-bottom: 1px solid #f0f4f8; }
+.stab tr:hover td { background: #f9fafb; }
+.stab .subtotal td { font-weight: 700; border-top: 2px solid #e2e8f0; background: #fafafa; }
+.stab .total-row td { color: #718096; background: #f7fafc; font-size: 11px; }
+
+.dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 5px; vertical-align: middle; }
+
+.section-label { font-size: 11px; font-weight: 700; color: #4a5568; margin: 8px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.hint { font-size: 11px; color: #a0aec0; margin-top: 8px; line-height: 1.5; }
+
+/* SVG cells */
+.cell { cursor: pointer; }
+.cell:hover { filter: brightness(0.88); }
+
+/* 9-B: extras 항목 */
+.co-extras { padding: 2px 8px 4px 37px; }
+.co-extra-item {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; color: #718096; line-height: 1.6;
+}
+.co-extra-del {
+  border: none; background: none; color: #fc8181;
+  cursor: pointer; font-size: 13px; line-height: 1;
+  padding: 0 2px; flex-shrink: 0;
+}
+.btn-co-add-extra {
+  width: 20px; height: 20px;
+  border: 1px solid #c6f6d5; background: white; color: #276749;
+  border-radius: 4px; cursor: pointer; font-size: 14px;
+  line-height: 1; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; padding: 0;
+  transition: all 0.15s;
+}
+.btn-co-add-extra:hover { background: #f0fff4; border-color: #68d391; }
+
+/* 단계 6: 인쇄 미디어 쿼리 */
+@media print {
+  @page { margin: 10mm; }
+  .tabs { display: none !important; }
+  .btn-print-header { display: none !important; }
+  .btn-ppt-header { display: none !important; }
+  .btn-summary-header { display: none !important; }
+  .summary-modal-overlay { display: none !important; }
+  header span { display: none !important; }
+  .app { height: auto; overflow: visible; }
+  .main-container { display: block; overflow: visible; }
+  .canvas-area { overflow: visible; padding: 0; }
+  .floor-header { margin-bottom: 6px; }
+  body { background: white; }
+  /* 단계 8: 인쇄 시 사이드바 대신 전체 층 합계만 표시 */
+  .sidebar { display: block !important; width: 100% !important; border: none; }
+  #paintingPanel { display: none !important; }
+  .sidebar > .sidebar-section:nth-child(2) { display: none !important; }
+  .summary-scroll { max-height: none !important; overflow: visible !important; }
+  .summary-global { border-top: 1px solid #999; page-break-inside: avoid; }
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+</head>
+<body>
+<div class="app">
+  <header>
+    🏭 아암센터 면적 관리
+    <span>클릭/드래그로 스판에 회사 지정 · 우클릭으로 초기화</span>
+    <!-- 단계 6: 인쇄 버튼 -->
+    <button class="btn-print-header" onclick="window.print()">🖨 인쇄</button>
+    <button class="btn-ppt-header" id="btnPPT" onclick="exportPPT()">📥 PPT</button>
+    <button class="btn-summary-header" onclick="openSummaryModal()">📊 현황</button>
+  </header>
+
+  <div class="tabs" id="tabBar"></div>
+
+  <div class="main-container">
+    <div class="canvas-area" id="canvasArea"></div>
+
+    <div class="sidebar">
+      <div class="sidebar-section" id="paintingPanel">
+        <h3>페인팅 모드</h3>
+        <div class="mode-row">
+          <button class="mode-btn" id="btnSpan" onclick="setMode('span')">🏗 스판 전체 열</button>
+          <button class="mode-btn active" id="btnCell" onclick="setMode('cell')">▦ 개별 셀</button>
+        </div>
+        <!-- 단계 2: 면적 제외 모드 / 단계 3: 면적 수정 모드 -->
+        <div class="mode-row">
+          <button class="mode-btn" id="btnExclude" onclick="toggleExcludeMode()">⛔ 면적 제외</button>
+          <button class="mode-btn" id="btnEditArea" onclick="toggleEditAreaMode()">✏ 면적 수정</button>
+        </div>
+        <!-- 단계 7: 셀 이름 입력 모드 -->
+        <div class="mode-row">
+          <button class="mode-btn" id="btnLabelMode" onclick="toggleLabelMode()" style="flex:none;width:100%;">🏷 셀 이름 입력 모드</button>
+        </div>
+        <!-- 단계 12: 스판 분할 모드 -->
+        <div class="mode-row">
+          <button class="mode-btn" id="btnSplitMode" onclick="toggleSplitMode()" style="flex:none;width:100%;">✂ 스판 분할 모드</button>
+        </div>
+        <div class="action-row">
+          <button class="btn-clear" onclick="clearFloor()">층 초기화</button>
+          <button class="btn-export" onclick="exportCSV()">CSV 내보내기</button>
+        </div>
+        <!-- 단계 5: JSON 버튼 -->
+        <div class="action-row-2">
+          <button class="btn-json-export" onclick="exportJSON()">↓ JSON 내보내기</button>
+          <button class="btn-json-import" onclick="document.getElementById('jsonFileInput').click()">↑ JSON 불러오기</button>
+        </div>
+        <input type="file" id="jsonFileInput" accept=".json" style="display:none" onchange="importJSON(this)">
+        <p class="hint">스판 전체: X열 세로 전체 선택<br>개별 셀: X·Y 교차 셀 선택<br>우클릭(회사 칸): 지우기<br>우클릭(빈 칸): 텍스트 입력<br>제외 모드: 클릭→면적 제외(회색)<br>수정 모드: 클릭→평수 직접 입력</p>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>회사 선택 (클릭하여 활성화)</h3>
+        <div class="company-list" id="companyList"></div>
+        <button class="btn-add-co" onclick="addCompany()">＋ 회사 추가</button>
+      </div>
+
+      <div class="summary-scroll" id="summaryScroll">
+        <h3 style="font-size:11px;font-weight:700;color:#718096;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;">평수 요약</h3>
+        <div id="summaryContent"></div>
+      </div>
+      <!-- 단계 8: 전체 층 합계 고정 패널 -->
+      <div class="summary-global" id="summaryGlobal">
+        <h3>전체 층 합계</h3>
+        <div id="globalSummaryContent"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// FLOOR DEFINITIONS (치수: mm)
+// ═══════════════════════════════════════════════════
+const FLOOR_ORDER = ['1F','2F','2-2F','4F','4-2F'];
+
+const FLOOR_BGIMG = {
+  '1F':   'floor_1f.png',
+  '2F':   '2F_hi.png',
+  '2-2F': '2F_hi.png',
+  '4F':   '4F_hi.png',
+  '4-2F': '4F_hi.png',
+};
+
+const FLOORS = {
+  '1F': {
+    label: '1F 전체',
+    note: '직접 면적 입력',
+    xSpans: [18000,11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,
+             11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,18000],
+    ySpans: [11000,11000,11000,11000,11000,11000,11000,11000,14000,16000],
+    xLabels: Array.from({length:24},(_,i)=>`X${i+1}`),
+    yLabels: Array.from({length:11},(_,i)=>`Y${i+1}`),
+    flipY: true,
+    noAutoArea: true,
+  },
+  '2F': {
+    label: '2F 전체',
+    note: '267,000 × 118,000mm │ 총 31,506m² / 9,547평',
+    // X1~X24 : 양 끝 18,000 / 나머지 11,000 (23스판)
+    xSpans: [18000,11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,
+             11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,18000],
+    // Y1~Y11 : 8개×11,000 + 14,000 + 16,000 (10스판)
+    ySpans: [11000,11000,11000,11000,11000,11000,11000,11000,14000,16000],
+    xLabels: Array.from({length:24},(_,i)=>`X${i+1}`),
+    yLabels: Array.from({length:11},(_,i)=>`Y${i+1}`),
+    flipY: true,
+  },
+  '2-2F': {
+    label: '2F 메자닌',
+    note: 'X6~X12 · X15~X24 │ 총 10,361m² / 3,140평',
+    xSpans: [18000,11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,
+             11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,18000],
+    ySpans: [11000,11000,11000,11000,11000,11000,11000,11000,14000,16000],
+    xLabels: Array.from({length:24},(_,i)=>`X${i+1}`),
+    yLabels: Array.from({length:11},(_,i)=>`Y${i+1}`),
+    flipY: true,
+  },
+  '4F': {
+    label: '4F 전체',
+    note: '267,000 × 118,000mm │ 총 31,506m² / 9,547평',
+    xSpans: [18000,11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,
+             11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,18000],
+    ySpans: [11000,11000,11000,11000,11000,11000,11000,11000,16000,14000],
+    xLabels: Array.from({length:24},(_,i)=>`X${i+1}`),
+    yLabels: Array.from({length:11},(_,i)=>`Y${i+1}`),
+    flipY: true,
+  },
+  '4-2F': {
+    label: '4F 메자닌',
+    note: 'X12~X24 · Y4~Y11 │ 139,000×85,000mm / 3,580평',
+    xSpans: [18000,11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,
+             11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,11000,18000],
+    ySpans: [11000,11000,11000,11000,11000,11000,11000,11000,16000,14000],
+    xLabels: Array.from({length:24},(_,i)=>`X${i+1}`),
+    yLabels: Array.from({length:11},(_,i)=>`Y${i+1}`),
+    flipY: true,
+  }
+};
+
+// ═══════════════════════════════════════════════════
+// COMMON AREAS (공용면적 - 평수 제외)
+// ═══════════════════════════════════════════════════
+const COMMON_AREAS = { '1F': new Set(), '2F': new Set(), '2-2F': new Set(), '4F': new Set(), '4-2F': new Set() };
+// 2F: X1~X2(xi=0), X23~X24(xi=22), Y4~Y11(yi=3~9)
+for (let yi = 3; yi <= 9; yi++) {
+  COMMON_AREAS['2F'].add(`0_${yi}`);
+  COMMON_AREAS['2F'].add(`22_${yi}`);
+}
+// 2F: Y10~Y11 행 전체(yi=9) 공용면적 제외
+for (let xi = 0; xi < 23; xi++) {
+  COMMON_AREAS['2F'].add(`${xi}_9`);
+}
+// 2-2F: 메자닌 셀만 활성 (도면 하늘색 점선+가로줄 영역)
+(function(){
+  const mez = new Set();
+  for (let xi=5; xi<=10; xi++) for (let yi=0; yi<=6; yi++) mez.add(`${xi}_${yi}`);
+  for (let yi=0; yi<=5; yi++) mez.add(`14_${yi}`);
+  for (let xi=15; xi<=19; xi++) for (let yi=0; yi<=6; yi++) mez.add(`${xi}_${yi}`);
+  for (let yi=0; yi<=5; yi++) mez.add(`20_${yi}`);
+  for (let xi=21; xi<=22; xi++) for (let yi=0; yi<=2; yi++) mez.add(`${xi}_${yi}`);
+  for (let xi=0; xi<23; xi++)
+    for (let yi=0; yi<10; yi++)
+      if (!mez.has(`${xi}_${yi}`)) COMMON_AREAS['2-2F'].add(`${xi}_${yi}`);
+})();
+
+// 4-2F: X12~X24(xi=11~22), Y4~Y11(yi=3~9) 만 활성, 나머지 공용
+(function(){
+  const mez = new Set();
+  for (let xi=11; xi<=22; xi++) for (let yi=3; yi<=9; yi++) mez.add(`${xi}_${yi}`);
+  for (let xi=0; xi<23; xi++)
+    for (let yi=0; yi<10; yi++)
+      if (!mez.has(`${xi}_${yi}`)) COMMON_AREAS['4-2F'].add(`${xi}_${yi}`);
+})();
+
+// ═══════════════════════════════════════════════════
+// MEZZANINE ACTUAL DIMENSIONS (도면 실측치) — 2-2F
+// ═══════════════════════════════════════════════════
+const MEZ_XSPAN = {
+  5:10200, 6:11000, 7:11000,
+  8:10200, 9:11000, 10:11000,
+  14:10400, 15:11000, 16:11000, 17:11000, 18:11000,
+  19:11000, 20:11000, 21:11000, 22:17700,
+};
+const MEZ_YSPAN_L = [9300,9300,9300,9300,9300,9300,8450];
+const MEZ_YSPAN_R = [8500,10900,10900,11300,11000,11000,11700];
+
+const MEZ_CELL_PY = {
+  '15_6': 16.3,
+  '14_3': 13.0,
+};
+
+function getMezCellArea(xi, yi) {
+  // customArea는 호출부에서 처리하므로 여기서는 순수 실측 mm² 반환
+  const ov = MEZ_CELL_PY[`${xi}_${yi}`];
+  if (ov !== undefined) return ov * 3.3 * 1e6; // 평 → m² → mm²  (평 = m²/3.3)
+  if (xi>=5  && xi<=10)  return (MEZ_XSPAN[xi]||0) * (MEZ_YSPAN_L[yi]||0);
+  if (xi>=14 && xi<=22)  return (MEZ_XSPAN[xi]||0) * (MEZ_YSPAN_R[yi]||0);
+  return 0;
+}
+
+// ═══════════════════════════════════════════════════
+// 단계 4: 4-2F 메자닌 실측 치수 (TODO: 실측값 확인 필요)
+// 2-2F 패턴 기반 추정값. X12~X24(xi=0~11), Y2~Y8(yi=0~6)
+// ═══════════════════════════════════════════════════
+// X 실제 스판 (전체 그리드 xi 기준: xi=11=X12 ~ xi=22=X24)
+// TODO: 실측값 확인 필요 — 현재 그리드 공칭값 사용
+const MEZ_XSPAN_4F = {
+  11:11000, 12:11000, 13:11000, 14:11000, 15:11000,
+  16:11000, 17:11000, 18:11000, 19:11000, 20:11000, 21:11000, 22:18000,
+};
+// Y 실제 스판 (yi=3~9 / Y4~Y11): index = yi-3
+// 4F ySpans 기준: yi=3~7→11000, yi=8→16000, yi=9→14000
+const MEZ_YSPAN_4F = [11000,11000,11000,11000,11000,16000,14000];
+
+function get4FMezCellArea(xi, yi) {
+  if (xi < 11 || xi > 22 || yi < 3 || yi > 9) return 0;
+  return (MEZ_XSPAN_4F[xi]||0) * (MEZ_YSPAN_4F[yi-3]||0);
+}
+
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let currentFloor = '2F';
+let paintMode = 'cell';
+let activeCompanyId = null;
+let isPainting = false;
+
+// 단계 2: 면적 제외 모드
+let excludeMode = false;
+// 단계 3: 면적 수정 모드
+let editAreaMode = false;
+// 단계 7: 셀 이름 입력 모드
+let labelMode = false;
+// 단계 12: 스판 분할 모드
+let splitMode = false;
+
+// 더블클릭 텍스트 입력용 — 첫 번째 클릭 직전 셀 상태 기록
+let _dblPrevState = { key: null, cid: null, t: 0 };
+
+// cellStates[floor][`${xi}_${yi}`] = companyId (number)
+//   또는 객체 형태: { cid, excluded, customArea } — 하위 호환 유지
+// 내부 저장은 단순 숫자 or 객체로 혼용 가능. 접근 시 getCellState() 사용.
+const cellStates = {'1F':{},'2F':{},'2-2F':{},'4F':{},'4-2F':{}};
+
+// cellMeta[floor][`${xi}_${yi}`] = { excluded: bool, customArea: number(평)|undefined }
+const cellMeta = {'1F':{},'2F':{},'2-2F':{},'4F':{},'4-2F':{}};
+
+function getMezSVGId() { return 'floorSVG'; }
+
+const PALETTE = [
+  '#FF6B6B','#FF9A3C','#F6C90E','#6BCB77','#4D96FF',
+  '#C77DFF','#FF6FD8','#00B4D8','#06D6A0','#F4845F',
+  '#B7C9F2','#FFD6A5','#CAFFBF','#9BF6FF','#FFC6FF'
+];
+
+let companies = [
+  {id:1, name:'회사 A', color:'#FF6B6B', extras:[], gita:{actualPy:0, contractPy:0}},
+  {id:2, name:'회사 B', color:'#4D96FF', extras:[], gita:{actualPy:0, contractPy:0}},
+  {id:3, name:'회사 C', color:'#6BCB77', extras:[], gita:{actualPy:0, contractPy:0}},
+  {id:4, name:'윈다', color:'#C77DFF', extras:[], gita:{actualPy:0, contractPy:0}},
+];
+let nextId = 5;
+activeCompanyId = 1;
+
+// ═══════════════════════════════════════════════════
+// 단계 1: 평수 변환 공식 — 평 = m² / 3.3 로 통일
+// ═══════════════════════════════════════════════════
+function m2(mm2){ return mm2/1e6; }
+function py(mm2){ return mm2/1e6/3.3; }           // 통일: m² / 3.3
+function fmt(n){ return n.toLocaleString('ko-KR',{maximumFractionDigits:1}); }
+function fmtM2Py(mm2) {                            // m²와 평 함께 표시용
+  return `${fmt(m2(mm2))}m² / ${fmt(py(mm2))}평`;
+}
+
+// ═══════════════════════════════════════════════════
+// 셀 면적 계산 (customArea 우선, excluded 처리)
+// 단위: mm²
+// ═══════════════════════════════════════════════════
+function getCellAreaMm2(fk, xi, yi) {
+  const key = `${xi}_${yi}`;
+  const meta = cellMeta[fk][key] || {};
+  if (meta.customArea !== undefined) {
+    return meta.customArea * 3.3 * 1e6; // 평 → m² → mm²
+  }
+  if (FLOORS[fk] && FLOORS[fk].noAutoArea) return 0; // 단계 16: 1F — noAutoArea 층은 customArea 없으면 0
+  if (fk === '2-2F') return getMezCellArea(xi, yi);
+  if (fk === '4-2F') return get4FMezCellArea(xi, yi);
+  const fl = FLOORS[fk];
+  return fl.xSpans[xi] * fl.ySpans[yi];
+}
+
+function isCellExcluded(fk, xi, yi) {
+  const meta = cellMeta[fk][`${xi}_${yi}`] || {};
+  return meta.excluded === true;
+}
+
+// 단계 13: 계약면적 환산 — 2F: 실÷77.55%, 4F: 실÷78.72%, 메자닌: 실면적 그대로
+function contractPy(fk, actualPy) {
+  if (fk === '1F') return actualPy / 0.7742; // 단계 16: 1F 전용 공식 (77.42%)
+  if (fk === '2F') return actualPy / 0.7755;
+  if (fk === '4F') return actualPy / 0.7872;
+  return actualPy; // 2-2F, 4-2F 메자닌은 동일
+}
+
+// 단계 15: 기타 계약면적 헬퍼 — contractPy > 0이면 직접값, 아니면 actualPy / 0.7755 자동 계산
+function gitaContractPy(co) {
+  const g = co.gita || {actualPy:0, contractPy:0};
+  return (g.contractPy > 0) ? g.contractPy : (g.actualPy > 0 ? g.actualPy / 0.7755 : 0);
+}
+
+// ═══════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════
+function buildTabs() {
+  const bar = document.getElementById('tabBar');
+  bar.innerHTML = '';
+  FLOOR_ORDER.forEach(fk => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (fk === currentFloor ? ' active' : '');
+    btn.textContent = FLOORS[fk].label;
+    btn.onclick = () => switchFloor(fk);
+    bar.appendChild(btn);
+  });
+}
+
+function switchFloor(fk) {
+  currentFloor = fk;
+  buildTabs();
+  renderFloor();
+  renderSummary();
+}
+
+// ═══════════════════════════════════════════════════
+// SVG FLOOR RENDERER
+// ═══════════════════════════════════════════════════
+const NS = 'http://www.w3.org/2000/svg';
+const PL = 44, PT = 28, PR = 12, PB = 28;
+
+// 단계 9-A: 빗금 패턴 제거 — 제외 셀은 회색 단색으로 표시
+
+function buildFloorSVG(fk, st, readOnly, overrideWidth) {
+  const fl = FLOORS[fk];
+  const xTotal = fl.xSpans.reduce((a,b)=>a+b,0);
+  const yTotal = fl.ySpans.reduce((a,b)=>a+b,0);
+  const ca = document.getElementById('canvasArea');
+  const avail = overrideWidth != null
+    ? Math.max(overrideWidth - PL - PR, 700)
+    : Math.max(ca.clientWidth - PL - PR - 8, 700);
+  const sc = avail / xTotal;
+  const svgW = avail + PL + PR;
+  const svgH = yTotal * sc + PT + PB + 16;
+
+  const xc = [0]; fl.xSpans.forEach(v => xc.push(xc.at(-1)+v));
+  const flipY = fl.flipY || false;
+  const ySpansDisp = flipY ? fl.ySpans.slice().reverse() : fl.ySpans;
+  const yc = [0]; ySpansDisp.forEach(v => yc.push(yc.at(-1)+v));
+
+  const svg = document.createElementNS(NS,'svg');
+  svg.setAttribute('width', svgW);
+  svg.setAttribute('height', svgH);
+  svg.style.display = 'block';
+  svg.style.cursor = readOnly ? 'default' : 'crosshair';
+  if (!readOnly) svg.id = getMezSVGId();
+  if (readOnly) svg.style.opacity = '0.82';
+
+  const commons = COMMON_AREAS[fk] || new Set();
+
+  for (let row=0; row<fl.ySpans.length; row++) {
+    const yi = flipY ? (fl.ySpans.length - 1 - row) : row;
+    for (let xi=0; xi<fl.xSpans.length; xi++) {
+      const rx = PL + xc[xi]*sc;
+      const ry = PT + yc[row]*sc;
+      const rw = fl.xSpans[xi]*sc;
+      const rh = ySpansDisp[row]*sc;
+      const isCommon = commons.has(`${xi}_${yi}`);
+      const cid = isCommon ? null : (st[`${xi}_${yi}`] || null);
+      const co = cid ? companies.find(c=>c.id===cid) : null;
+      const isExcluded = !isCommon && isCellExcluded(fk, xi, yi);
+      const hasCustom = !isCommon && (cellMeta[fk][`${xi}_${yi}`]||{}).customArea !== undefined;
+      const splitData = !isCommon && !isExcluded ? (cellMeta[fk][`${xi}_${yi}`]||{}).split : null;
+
+      // 단계 12: 분할 셀 렌더링
+      if (splitData) {
+        const co1 = companies.find(c=>c.id===splitData.co1Id);
+        const co2 = companies.find(c=>c.id===splitData.co2Id);
+        const isMez = (fk==='2-2F'||fk==='4-2F');
+        const emptyFill2 = isMez ? '#dbeafe' : '#dce4ef';
+        const r = Math.max(0, Math.min(1, splitData.ratio||0.5));
+        const w1 = rw * r, w2 = rw * (1 - r);
+        const cellMm2 = getCellAreaMm2(fk, xi, yi);
+        const makeHalfRect = (ox, ow, co) => {
+          const hr = document.createElementNS(NS,'rect');
+          hr.setAttribute('x', ox); hr.setAttribute('y', ry);
+          hr.setAttribute('width', ow); hr.setAttribute('height', rh);
+          hr.setAttribute('fill', co ? co.color : emptyFill2);
+          hr.setAttribute('stroke', '#8a9bb5'); hr.setAttribute('stroke-width','0.6');
+          if (!readOnly) {
+            hr.setAttribute('class','cell');
+            hr.dataset.xi = xi; hr.dataset.yi = yi;
+            hr.addEventListener('mousedown', e => {
+              if (e.button !== 0 && e.button !== 2) return;
+              e.preventDefault(); isPainting = true;
+              handleCellClick(xi, yi, e.button === 2);
+            });
+            hr.addEventListener('contextmenu', e => { e.preventDefault(); handleRightClick(xi, yi); });
+            hr.addEventListener('dblclick', e => {
+              e.preventDefault();
+              openCellTextInput(xi, yi);
+            });
+          }
+          return hr;
+        };
+        svg.appendChild(makeHalfRect(rx, w1, co1));
+        svg.appendChild(makeHalfRect(rx + w1, w2, co2));
+        // 구분선
+        const divLine = document.createElementNS(NS,'line');
+        divLine.setAttribute('x1', rx+w1); divLine.setAttribute('y1', ry);
+        divLine.setAttribute('x2', rx+w1); divLine.setAttribute('y2', ry+rh);
+        divLine.setAttribute('stroke', 'rgba(255,255,255,0.8)'); divLine.setAttribute('stroke-width','1.5');
+        divLine.setAttribute('pointer-events','none');
+        svg.appendChild(divLine);
+        // 각 절반에 평수 텍스트
+        if (rw > 40 && rh > 14) {
+          const fz = Math.min(rh*0.3, 9);
+          const mkT = (tx, val, color) => {
+            const t = document.createElementNS(NS,'text');
+            t.setAttribute('x', tx); t.setAttribute('y', ry+rh/2+3);
+            t.setAttribute('text-anchor','middle'); t.setAttribute('font-size', fz);
+            t.setAttribute('fill', color||'rgba(0,0,0,0.5)'); t.setAttribute('pointer-events','none');
+            t.textContent = val; return t;
+          };
+          if (w1 > 24) svg.appendChild(mkT(rx+w1/2, `${(cellMm2/1e6/3.3*r).toFixed(1)}평`, co1?'rgba(0,0,0,0.5)':'#a0aec0'));
+          if (w2 > 24) svg.appendChild(mkT(rx+w1+w2/2, `${(cellMm2/1e6/3.3*(1-r)).toFixed(1)}평`, co2?'rgba(0,0,0,0.5)':'#a0aec0'));
+        }
+        continue;
+      }
+
+      const rect = document.createElementNS(NS,'rect');
+      rect.setAttribute('x', rx); rect.setAttribute('y', ry);
+      rect.setAttribute('width', rw); rect.setAttribute('height', rh);
+      const isMezCell = (fk==='2-2F' || fk==='4-2F') && !isCommon;
+      const emptyFill = isMezCell ? '#dbeafe' : '#dce4ef';
+
+      if (isExcluded) {
+        rect.setAttribute('fill', 'rgba(150,150,150,0.65)');
+        rect.setAttribute('stroke', '#888');
+        rect.setAttribute('stroke-width', '1.2');
+      } else if (isCommon) {
+        rect.setAttribute('fill', '#b8c4ce');
+        rect.setAttribute('stroke', '#8a9bb5');
+        rect.setAttribute('stroke-width', '0.6');
+      } else {
+        rect.setAttribute('fill', co ? co.color : emptyFill);
+        rect.setAttribute('stroke', hasCustom ? '#d69e2e' : '#8a9bb5');
+        rect.setAttribute('stroke-width', hasCustom ? '2' : '0.6');
+      }
+
+      if (!readOnly) {
+        if (!isCommon) {
+          rect.setAttribute('class','cell');
+          rect.dataset.xi = xi; rect.dataset.yi = yi;
+          rect.addEventListener('mousedown', e => {
+            if (e.button !== 0 && e.button !== 2) return;
+            e.preventDefault();
+            // 더블클릭 감지를 위해 첫 클릭 직전 상태 저장
+            if (e.button === 0 && !excludeMode && !editAreaMode && !labelMode && !splitMode) {
+              const now = Date.now();
+              const ck = `${xi}_${yi}`;
+              if (!(_dblPrevState.key === ck && now - _dblPrevState.t < 300)) {
+                _dblPrevState = { key: ck, cid: cellStates[currentFloor]?.[ck] ?? null, t: now };
+              }
+            }
+            isPainting = true;
+            handleCellClick(xi, yi, e.button === 2);
+          });
+          rect.addEventListener('mouseenter', () => {
+            if (!isPainting) return;
+            if (excludeMode || editAreaMode || labelMode || splitMode) return; // 드래그는 일반 페인팅만
+            applyPaint(xi, yi, activeCompanyId);
+          });
+          rect.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            handleRightClick(xi, yi);
+          });
+          rect.addEventListener('dblclick', e => {
+            e.preventDefault();
+            const ck = `${xi}_${yi}`;
+            // 원래 빈 셀이었는데 더블클릭으로 칠해진 경우 → 원상복구 후 텍스트 입력
+            if (!excludeMode && !editAreaMode && !labelMode && !splitMode
+                && _dblPrevState.key === ck && _dblPrevState.cid === null
+                && (cellStates[currentFloor]?.[ck] ?? null) !== null) {
+              delete cellStates[currentFloor][ck];
+            }
+            openCellTextInput(xi, yi);
+          });
+        } else {
+          // 공용 셀: 셀 이름 입력 모드에서만 클릭 허용, 더블클릭으로도 텍스트 입력 가능
+          rect.addEventListener('mousedown', e => {
+            if (e.button !== 0 || !labelMode) return;
+            e.preventDefault();
+            handleCellClick(xi, yi, false);
+          });
+          rect.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            if (labelMode) handleRightClick(xi, yi);
+          });
+          rect.addEventListener('dblclick', e => {
+            e.preventDefault();
+            openCellTextInput(xi, yi);
+          });
+        }
+      }
+      svg.appendChild(rect);
+
+      // 셀 텍스트 (평수 표시 + 단계 7: 레이블 표시)
+      if (rw > 28 && rh > 14 && (!readOnly || overrideWidth != null)) {
+        const fz = Math.min(rh*0.35, 10);
+        const cellLabel = (cellMeta[fk][`${xi}_${yi}`] || {}).label || '';
+
+        if (!isCommon) {
+          const cellMm2 = getCellAreaMm2(fk, xi, yi);
+          const pyVal = (cellMm2/1e6/3.3).toFixed(1); // 단계 1: /3.3 통일
+          const areaLabel = hasCustom ? `*${pyVal}평` : `${pyVal}평`;
+          let textColor;
+          if (isExcluded) textColor = '#e53e3e';
+          else if (hasCustom) textColor = '#744210';
+          else textColor = co ? 'rgba(0,0,0,0.45)' : (isMezCell ? '#6b9fd4' : '#a0aec0');
+
+          // 단계 16: noAutoArea 층(1F)에서 customArea 없는 셀은 면적 텍스트 미표시
+          if (!fl.noAutoArea || cellMm2 > 0) {
+            // 평수 텍스트 — cellLabel이 있으면 위로 약간 올림
+            const areaOffsetY = cellLabel ? ry+rh/2 : ry+rh/2+4;
+            const t = document.createElementNS(NS,'text');
+            t.setAttribute('x', rx+rw/2); t.setAttribute('y', areaOffsetY);
+            t.setAttribute('text-anchor','middle');
+            t.setAttribute('font-size', fz);
+            t.setAttribute('fill', textColor);
+            t.setAttribute('pointer-events','none');
+            t.textContent = areaLabel;
+            svg.appendChild(t);
+          }
+
+          // 단계 7: 레이블 텍스트
+          if (cellLabel) {
+            const lz = Math.min(fz * 0.85, 9);
+            const lt = document.createElementNS(NS,'text');
+            lt.setAttribute('x', rx+rw/2); lt.setAttribute('y', ry+rh/2+4+lz);
+            lt.setAttribute('text-anchor','middle');
+            lt.setAttribute('font-size', lz);
+            lt.setAttribute('fill', co ? 'rgba(0,0,0,0.6)' : '#4a7c59');
+            lt.setAttribute('font-weight','600');
+            lt.setAttribute('pointer-events','none');
+            lt.textContent = cellLabel;
+            svg.appendChild(lt);
+          }
+        } else if (cellLabel) {
+          // 공용 셀 레이블 텍스트
+          const lz = Math.min(fz * 0.85, 9);
+          const lt = document.createElementNS(NS,'text');
+          lt.setAttribute('x', rx+rw/2); lt.setAttribute('y', ry+rh/2+4);
+          lt.setAttribute('text-anchor','middle');
+          lt.setAttribute('font-size', lz);
+          lt.setAttribute('fill', 'rgba(0,0,0,0.55)');
+          lt.setAttribute('font-weight','600');
+          lt.setAttribute('pointer-events','none');
+          lt.textContent = cellLabel;
+          svg.appendChild(lt);
+        }
+      }
+    }
+  }
+
+  // 2F 야외도크 라벨
+  if (fk === '2F' || fk === '2-2F') {
+    const dockRow = fl.ySpans.length - 1 - 8;
+    const dockYmid = PT + (yc[dockRow]+yc[dockRow+1])/2*sc;
+    const lx = PL - 30;
+    const lt = document.createElementNS(NS,'text');
+    lt.setAttribute('x', lx); lt.setAttribute('y', dockYmid);
+    lt.setAttribute('text-anchor','middle');
+    lt.setAttribute('font-size', 9);
+    lt.setAttribute('fill', '#374151');
+    lt.setAttribute('font-family',"'Malgun Gothic',sans-serif");
+    lt.setAttribute('pointer-events','none');
+    lt.setAttribute('transform', `rotate(-90,${lx},${dockYmid})`);
+    lt.textContent = '야외도크';
+    svg.appendChild(lt);
+  }
+
+  // 2-2F 메자닌 구역 점선 박스 + 라벨
+  if (fk === '2-2F') {
+    const mezRowTop  = fl.ySpans.length - 1 - 6;
+    const mezRowBot  = fl.ySpans.length - 1 - 0;
+    const zoneYtop   = PT + yc[mezRowTop] * sc;
+    const zoneYbot   = PT + yc[mezRowBot + 1] * sc;
+    const zoneH      = zoneYbot - zoneYtop;
+
+    const zones = [
+      { x0: xc[5],  x1: xc[8],  label: 'X6~X9 메자닌 (2,069m²)' },
+      { x0: xc[8],  x1: xc[11], label: 'X9~X12 메자닌 (2,069m²)' },
+      { x0: xc[14], x1: xc[23], label: 'X15~X24 메자닌 (6,223m²)' },
+    ];
+    zones.forEach(z => {
+      const bx = PL + z.x0*sc, bw = (z.x1-z.x0)*sc;
+      const box = document.createElementNS(NS,'rect');
+      box.setAttribute('x', bx); box.setAttribute('y', zoneYtop);
+      box.setAttribute('width', bw); box.setAttribute('height', zoneH);
+      box.setAttribute('fill','none');
+      box.setAttribute('stroke','#0ea5e9');
+      box.setAttribute('stroke-width','2');
+      box.setAttribute('stroke-dasharray','8,4');
+      box.setAttribute('pointer-events','none');
+      svg.appendChild(box);
+      mk_text(svg, bx+bw/2, zoneYtop-5, z.label, 9, '#0369a1', 'middle');
+    });
+  }
+
+  // 4-2F 메자닌 구역 점선 박스 + 라벨
+  if (fk === '4-2F') {
+    // flipY=true: yi=9(Y10~Y11)→display row=0, yi=3(Y4~Y5)→row=6
+    const mezRowTop = fl.ySpans.length - 1 - 9; // 0
+    const mezRowBot = fl.ySpans.length - 1 - 3; // 6
+    const zoneYtop  = PT + yc[mezRowTop] * sc;
+    const zoneYbot  = PT + yc[mezRowBot + 1] * sc;
+    const zoneH     = zoneYbot - zoneYtop;
+    const bx = PL + xc[11] * sc;
+    const bw = (xc[23] - xc[11]) * sc;
+    // 총면적 계산: X 139,000mm × Y 85,000mm = 11,815m² / 3,580평
+    const box = document.createElementNS(NS, 'rect');
+    box.setAttribute('x', bx); box.setAttribute('y', zoneYtop);
+    box.setAttribute('width', bw); box.setAttribute('height', zoneH);
+    box.setAttribute('fill', 'none');
+    box.setAttribute('stroke', '#0ea5e9');
+    box.setAttribute('stroke-width', '2');
+    box.setAttribute('stroke-dasharray', '8,4');
+    box.setAttribute('pointer-events', 'none');
+    svg.appendChild(box);
+    mk_text(svg, bx + bw/2, zoneYtop - 5, 'X12~X24 · Y4~Y11 메자닌 (3,580평)', 9, '#0369a1', 'middle');
+  }
+
+  // X column labels (top)
+  for (let xi=0; xi<=fl.xSpans.length; xi++) {
+    const x = PL + xc[xi]*sc;
+    mk_text(svg, x, PT-6, fl.xLabels[xi], 9, '#374151', 'middle');
+    const line = document.createElementNS(NS,'line');
+    line.setAttribute('x1',x); line.setAttribute('y1',PT-3);
+    line.setAttribute('x2',x); line.setAttribute('y2',PT);
+    line.setAttribute('stroke','#9ca3af'); line.setAttribute('stroke-width','0.7');
+    svg.appendChild(line);
+  }
+
+  // X span width labels (bottom)
+  for (let xi=0; xi<fl.xSpans.length; xi++) {
+    const x = PL + (xc[xi]+xc[xi+1])/2*sc;
+    const y = PT + yTotal*sc + 14;
+    const w = fl.xSpans[xi];
+    mk_text(svg, x, y, `${(w/1000).toFixed(w%1000===0?0:1)}m`, 8, '#718096', 'middle');
+  }
+
+  // Y row labels (left)
+  for (let row=0; row<=fl.ySpans.length; row++) {
+    const y = PT + yc[row]*sc;
+    const labelIdx = flipY ? (fl.ySpans.length - row) : row;
+    mk_text(svg, PL-5, y+3, fl.yLabels[labelIdx], 9, '#374151', 'end');
+    const line = document.createElementNS(NS,'line');
+    line.setAttribute('x1',PL-2); line.setAttribute('y1',y);
+    line.setAttribute('x2',PL); line.setAttribute('y2',y);
+    line.setAttribute('stroke','#9ca3af'); line.setAttribute('stroke-width','0.7');
+    svg.appendChild(line);
+  }
+
+  // Y span height labels (right)
+  for (let row=0; row<fl.ySpans.length; row++) {
+    const yi2 = flipY ? (fl.ySpans.length - 1 - row) : row;
+    const y = PT + (yc[row]+yc[row+1])/2*sc;
+    const x = PL + xTotal*sc + 6;
+    mk_text(svg, x, y+3, `${(fl.ySpans[yi2]/1000).toFixed(0)}m`, 8, '#718096', 'start');
+  }
+
+  // Border
+  const border = document.createElementNS(NS,'rect');
+  border.setAttribute('x',PL); border.setAttribute('y',PT);
+  border.setAttribute('width',xTotal*sc); border.setAttribute('height',yTotal*sc);
+  border.setAttribute('fill','none'); border.setAttribute('stroke','#4a5568');
+  border.setAttribute('stroke-width','1.5');
+  svg.appendChild(border);
+
+  if (!readOnly) {
+    svg.addEventListener('mouseup', ()=>{ isPainting=false; });
+    svg.addEventListener('mouseleave', ()=>{ isPainting=false; });
+  }
+  return svg;
+}
+
+function renderFloor() {
+  const ca = document.getElementById('canvasArea');
+  ca.innerHTML = '';
+
+  const fl = FLOORS[currentFloor];
+  const hdr = document.createElement('div');
+  hdr.className = 'floor-header';
+  hdr.innerHTML = `<div class="floor-title">${fl.label}</div>
+    <div class="floor-note">${fl.note}</div>`;
+  ca.appendChild(hdr);
+
+  const floorSVG = buildFloorSVG(currentFloor, cellStates[currentFloor], false);
+  ca.appendChild(floorSVG);
+
+  const imgSrc = FLOOR_BGIMG[currentFloor];
+  if (imgSrc) {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'margin-top:10px;border-top:2px solid #c8d4e0;padding-top:8px;';
+    const title = document.createElement('div');
+    title.style.cssText = 'font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px;';
+    title.textContent = '실제 도면';
+    wrap.appendChild(title);
+    const img = document.createElement('img');
+    img.src = imgSrc;
+    img.alt = fl.label + ' 도면';
+    img.style.cssText = 'width:100%;display:block;border:1px solid #c8d4e0;border-radius:4px;';
+    wrap.appendChild(img);
+    ca.appendChild(wrap);
+  }
+
+  document.addEventListener('mouseup', ()=>{ isPainting=false; }, {once:false});
+}
+
+function mk_text(svg, x, y, txt, sz, fill, anchor) {
+  const t = document.createElementNS(NS,'text');
+  t.setAttribute('x',x); t.setAttribute('y',y);
+  t.setAttribute('text-anchor', anchor||'middle');
+  t.setAttribute('font-size', sz); t.setAttribute('fill', fill||'#4a5568');
+  t.setAttribute('font-family',"'Malgun Gothic',sans-serif");
+  t.setAttribute('pointer-events','none');
+  t.textContent = txt;
+  svg.appendChild(t);
+}
+
+// ═══════════════════════════════════════════════════
+// 단계 2,3: 클릭 처리 통합
+// ═══════════════════════════════════════════════════
+function handleCellClick(xi, yi, isRight) {
+  // 단계 12: 스판 분할 모드
+  if (splitMode) {
+    const key = `${xi}_${yi}`;
+    const fk = currentFloor;
+    const fl = FLOORS[fk];
+    const xLabel = fl.xLabels[xi] || `X${xi}`;
+    const yLabel = fl.yLabels[yi] || `Y${yi}`;
+    if (isRight) {
+      // 우클릭: 분할 해제
+      if (cellMeta[fk][key] && cellMeta[fk][key].split) {
+        delete cellMeta[fk][key].split;
+        if (Object.keys(cellMeta[fk][key]).length === 0)
+          delete cellMeta[fk][key];
+        renderFloor(); renderSummary(); saveState();
+      }
+      return;
+    }
+    // 좌클릭: 분할 설정
+    if (companies.length < 2) {
+      alert('분할 기능을 사용하려면 회사가 2개 이상 필요합니다.');
+      return;
+    }
+    const coList = companies.map((c,i) => `${i+1}. ${c.name}`).join('\n');
+    const sel1 = prompt(`셀 ${xLabel}×${yLabel} 분할 설정\n\n1회사 선택 (번호 입력):\n${coList}`, '1');
+    if (sel1 === null) return;
+    const idx1 = parseInt(sel1) - 1;
+    if (isNaN(idx1) || idx1 < 0 || idx1 >= companies.length) { alert('올바른 번호를 입력하세요.'); return; }
+    const sel2 = prompt(`2회사 선택 (번호 입력):\n${coList}`, '2');
+    if (sel2 === null) return;
+    const idx2 = parseInt(sel2) - 1;
+    if (isNaN(idx2) || idx2 < 0 || idx2 >= companies.length) { alert('올바른 번호를 입력하세요.'); return; }
+    if (idx1 === idx2) { alert('서로 다른 회사를 선택하세요.'); return; }
+    const ratioInput = prompt(`${companies[idx1].name} / ${companies[idx2].name}\n비율 입력 (예: 40/60 또는 0.4):\n(첫 번째 회사의 비율)`, '50/50');
+    if (ratioInput === null) return;
+    let ratio;
+    if (ratioInput.includes('/')) {
+      const parts = ratioInput.split('/').map(s => parseFloat(s.trim()));
+      if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1]) || parts[0]+parts[1] <= 0) {
+        alert('올바른 비율 형식을 입력하세요. (예: 40/60)'); return;
+      }
+      ratio = parts[0] / (parts[0] + parts[1]);
+    } else {
+      ratio = parseFloat(ratioInput);
+      if (isNaN(ratio)) { alert('올바른 숫자를 입력하세요.'); return; }
+      if (ratio > 1) ratio = ratio / 100; // 40 → 0.40
+    }
+    ratio = Math.max(0.01, Math.min(0.99, ratio));
+    if (!cellMeta[fk][key]) cellMeta[fk][key] = {};
+    cellMeta[fk][key].split = {
+      co1Id: companies[idx1].id,
+      co2Id: companies[idx2].id,
+      ratio: ratio
+    };
+    // 분할 셀은 cellStates에서 단일 회사 배정 제거
+    delete cellStates[fk][key];
+    renderFloor(); renderSummary(); saveState();
+    return;
+  }
+  // 단계 7: 셀 이름 입력 모드
+  if (labelMode) {
+    const key = `${xi}_${yi}`;
+    if (isRight) {
+      // 우클릭: 레이블 삭제
+      if (cellMeta[currentFloor][key]) {
+        delete cellMeta[currentFloor][key].label;
+        if (Object.keys(cellMeta[currentFloor][key]).length === 0)
+          delete cellMeta[currentFloor][key];
+      }
+    } else {
+      // 좌클릭: 이름 입력
+      const fl = FLOORS[currentFloor];
+      const xLabel = fl.xLabels[xi] || `X${xi}`;
+      const yLabel = fl.yLabels[yi] || `Y${yi}`;
+      const current = (cellMeta[currentFloor][key] || {}).label || '';
+      const input = prompt(`셀 ${xLabel}×${yLabel} 이름 입력:\n(빈칸 입력 시 삭제)`, current);
+      if (input === null) return;
+      if (!cellMeta[currentFloor][key]) cellMeta[currentFloor][key] = {};
+      if (input.trim() === '') {
+        delete cellMeta[currentFloor][key].label;
+        if (Object.keys(cellMeta[currentFloor][key]).length === 0)
+          delete cellMeta[currentFloor][key];
+      } else {
+        cellMeta[currentFloor][key].label = input.trim();
+      }
+    }
+    renderFloor(); renderSummary(); saveState();
+    return;
+  }
+  if (excludeMode) {
+    if (isRight) {
+      // 우클릭: 제외 해제
+      const key = `${xi}_${yi}`;
+      if (!cellMeta[currentFloor][key]) cellMeta[currentFloor][key] = {};
+      cellMeta[currentFloor][key].excluded = false;
+    } else {
+      // 좌클릭: 제외 토글
+      const key = `${xi}_${yi}`;
+      if (!cellMeta[currentFloor][key]) cellMeta[currentFloor][key] = {};
+      cellMeta[currentFloor][key].excluded = !cellMeta[currentFloor][key].excluded;
+    }
+    renderFloor(); renderSummary(); saveState();
+    return;
+  }
+  if (editAreaMode) {
+    if (isRight) {
+      // 우클릭: 커스텀 면적 초기화
+      const key = `${xi}_${yi}`;
+      if (cellMeta[currentFloor][key]) delete cellMeta[currentFloor][key].customArea;
+    } else {
+      // 좌클릭: 평수 직접 입력
+      const key = `${xi}_${yi}`;
+      const current = (cellMeta[currentFloor][key]||{}).customArea;
+      const fl = FLOORS[currentFloor];
+      const xLabel = fl.xLabels[xi] || `X${xi}`;
+      const yLabel = fl.yLabels[yi] || `Y${yi}`;
+      const defaultVal = current !== undefined ? current : (getCellAreaMm2(currentFloor, xi, yi)/1e6/3.3).toFixed(2);
+      const input = prompt(`셀 ${xLabel}×${yLabel} 면적 입력 (평 단위):\n(우클릭하면 커스텀 값 초기화)`, defaultVal);
+      if (input === null) return;
+      const val = parseFloat(input);
+      if (isNaN(val) || val < 0) { alert('올바른 숫자를 입력하세요.'); return; }
+      if (!cellMeta[currentFloor][key]) cellMeta[currentFloor][key] = {};
+      cellMeta[currentFloor][key].customArea = val;
+    }
+    renderFloor(); renderSummary(); saveState();
+    return;
+  }
+  // 일반 페인팅
+  applyPaint(xi, yi, isRight ? null : activeCompanyId);
+}
+
+function handleRightClick(xi, yi) {
+  // 단계 12: 분할 모드 우클릭 = 분할 해제
+  if (splitMode) {
+    const key = `${xi}_${yi}`;
+    if (cellMeta[currentFloor][key] && cellMeta[currentFloor][key].split) {
+      delete cellMeta[currentFloor][key].split;
+      if (Object.keys(cellMeta[currentFloor][key]).length === 0)
+        delete cellMeta[currentFloor][key];
+      renderFloor(); renderSummary(); saveState();
+    }
+    return;
+  }
+  // 단계 7: 셀 이름 모드 우클릭 = 레이블 삭제
+  if (labelMode) {
+    const key = `${xi}_${yi}`;
+    if (cellMeta[currentFloor][key]) {
+      delete cellMeta[currentFloor][key].label;
+      if (Object.keys(cellMeta[currentFloor][key]).length === 0)
+        delete cellMeta[currentFloor][key];
+      renderFloor(); renderSummary(); saveState();
+    }
+    return;
+  }
+  if (excludeMode) {
+    // 제외 모드 우클릭 = 제외 해제
+    const key = `${xi}_${yi}`;
+    if (!cellMeta[currentFloor][key]) cellMeta[currentFloor][key] = {};
+    cellMeta[currentFloor][key].excluded = false;
+    renderFloor(); renderSummary(); saveState();
+    return;
+  }
+  if (editAreaMode) {
+    // 수정 모드 우클릭 = 커스텀 초기화
+    const key = `${xi}_${yi}`;
+    if (cellMeta[currentFloor][key]) {
+      delete cellMeta[currentFloor][key].customArea;
+      renderFloor(); renderSummary(); saveState();
+    }
+    return;
+  }
+  // 빈 셀 우클릭 → 텍스트 입력, 회사 있는 셀 우클릭 → 지우기
+  const key = `${xi}_${yi}`;
+  if (cellStates[currentFloor][key]) {
+    applyPaint(xi, yi, null);
+  } else {
+    const current = (cellMeta[currentFloor][key] || {}).label || '';
+    const input = prompt('텍스트 입력:\n(빈칸 입력 시 삭제)', current);
+    if (input === null) return;
+    if (!cellMeta[currentFloor][key]) cellMeta[currentFloor][key] = {};
+    if (input.trim() === '') {
+      delete cellMeta[currentFloor][key].label;
+      if (Object.keys(cellMeta[currentFloor][key]).length === 0)
+        delete cellMeta[currentFloor][key];
+    } else {
+      cellMeta[currentFloor][key].label = input.trim();
+    }
+    renderFloor(); renderSummary(); saveState();
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// PAINT
+// ═══════════════════════════════════════════════════
+function applyPaint(xi, yi, compId) {
+  const fl = FLOORS[currentFloor];
+  const st = cellStates[currentFloor];
+  const commons = COMMON_AREAS[currentFloor] || new Set();
+
+  if (paintMode === 'span') {
+    for (let y=0; y<fl.ySpans.length; y++) {
+      if (commons.has(`${xi}_${y}`)) continue;
+      compId == null ? delete st[`${xi}_${y}`] : (st[`${xi}_${y}`] = compId);
+    }
+  } else {
+    if (commons.has(`${xi}_${yi}`)) return;
+    compId == null ? delete st[`${xi}_${yi}`] : (st[`${xi}_${yi}`] = compId);
+  }
+
+  const svg = document.getElementById(getMezSVGId());
+  if (!svg) return;
+  svg.querySelectorAll('.cell').forEach(r => {
+    const rx = +r.dataset.xi, ry = +r.dataset.yi;
+    const update = paintMode==='span' ? rx===xi : (rx===xi && ry===yi);
+    if (!update) return;
+    const cid = st[`${rx}_${ry}`];
+    const co = cid ? companies.find(c=>c.id===cid) : null;
+    const isMezCell = (currentFloor==='2-2F');
+    const emptyFill = isMezCell ? '#dbeafe' : '#dce4ef';
+    if (!isCellExcluded(currentFloor, rx, ry)) {
+      r.setAttribute('fill', co ? co.color : emptyFill);
+    }
+    const txt = r.nextSibling;
+    if (txt && txt.tagName==='text') txt.setAttribute('fill', co?'rgba(0,0,0,0.45)':'#a0aec0');
+  });
+
+  renderSummary();
+  saveState();
+}
+
+// ═══════════════════════════════════════════════════
+// 단계 2: 면적 제외 모드 토글
+// ═══════════════════════════════════════════════════
+function toggleExcludeMode() {
+  excludeMode = !excludeMode;
+  if (excludeMode) { editAreaMode = false; labelMode = false; splitMode = false; }
+  const btn = document.getElementById('btnExclude');
+  const editBtn = document.getElementById('btnEditArea');
+  const lblBtn = document.getElementById('btnLabelMode');
+  const splitBtn = document.getElementById('btnSplitMode');
+  btn.className = 'mode-btn' + (excludeMode ? ' exclude-active' : '');
+  editBtn.className = 'mode-btn';
+  if (lblBtn) lblBtn.className = 'mode-btn';
+  if (splitBtn) splitBtn.className = 'mode-btn';
+}
+
+// ═══════════════════════════════════════════════════
+// 단계 3: 면적 수정 모드 토글
+// ═══════════════════════════════════════════════════
+function toggleEditAreaMode() {
+  editAreaMode = !editAreaMode;
+  if (editAreaMode) { excludeMode = false; labelMode = false; splitMode = false; }
+  const btn = document.getElementById('btnEditArea');
+  const excBtn = document.getElementById('btnExclude');
+  const lblBtn = document.getElementById('btnLabelMode');
+  const splitBtn = document.getElementById('btnSplitMode');
+  btn.className = 'mode-btn' + (editAreaMode ? ' edit-active' : '');
+  excBtn.className = 'mode-btn';
+  if (lblBtn) lblBtn.className = 'mode-btn';
+  if (splitBtn) splitBtn.className = 'mode-btn';
+}
+
+// ═══════════════════════════════════════════════════
+// 더블클릭 텍스트 입력
+// ═══════════════════════════════════════════════════
+function openCellTextInput(xi, yi) {
+  const fl = FLOORS[currentFloor];
+  const key = `${xi}_${yi}`;
+  const xLabel = fl.xLabels[xi] || `X${xi+1}`;
+  const yLabel = fl.yLabels[yi] || `Y${yi+1}`;
+  const current = (cellMeta[currentFloor][key] || {}).label || '';
+  const input = prompt(`[${xLabel}×${yLabel}] 텍스트 입력\n(빈칸이면 삭제)`, current);
+  if (input === null) { renderFloor(); renderSummary(); saveState(); return; }
+  if (!cellMeta[currentFloor][key]) cellMeta[currentFloor][key] = {};
+  if (input.trim() === '') {
+    delete cellMeta[currentFloor][key].label;
+    if (Object.keys(cellMeta[currentFloor][key]).length === 0)
+      delete cellMeta[currentFloor][key];
+  } else {
+    cellMeta[currentFloor][key].label = input.trim();
+  }
+  renderFloor(); renderSummary(); saveState();
+}
+
+// 단계 7: 셀 이름 입력 모드 토글
+// ═══════════════════════════════════════════════════
+function toggleLabelMode() {
+  labelMode = !labelMode;
+  if (labelMode) { excludeMode = false; editAreaMode = false; splitMode = false; }
+  const btn = document.getElementById('btnLabelMode');
+  const excBtn = document.getElementById('btnExclude');
+  const editBtn = document.getElementById('btnEditArea');
+  const splitBtn = document.getElementById('btnSplitMode');
+  btn.className = 'mode-btn' + (labelMode ? ' label-active' : '');
+  excBtn.className = 'mode-btn';
+  editBtn.className = 'mode-btn';
+  if (splitBtn) splitBtn.className = 'mode-btn';
+}
+
+// ═══════════════════════════════════════════════════
+// 단계 12: 스판 분할 모드 토글
+// ═══════════════════════════════════════════════════
+function toggleSplitMode() {
+  splitMode = !splitMode;
+  if (splitMode) { excludeMode = false; editAreaMode = false; labelMode = false; }
+  const btn = document.getElementById('btnSplitMode');
+  const excBtn = document.getElementById('btnExclude');
+  const editBtn = document.getElementById('btnEditArea');
+  const lblBtn = document.getElementById('btnLabelMode');
+  if (btn) btn.className = 'mode-btn' + (splitMode ? ' split-active' : '');
+  if (excBtn) excBtn.className = 'mode-btn';
+  if (editBtn) editBtn.className = 'mode-btn';
+  if (lblBtn) lblBtn.className = 'mode-btn';
+}
+
+// ═══════════════════════════════════════════════════
+// COMPANY LIST
+// ═══════════════════════════════════════════════════
+function renderCompanyList() {
+  const list = document.getElementById('companyList');
+  list.innerHTML = '';
+  companies.forEach(co => {
+    if (!co.extras) co.extras = []; // 하위 호환: extras 없으면 초기화
+    if (!co.gita) co.gita = {actualPy:0, contractPy:0}; // 단계 14: 하위 호환
+    if (co.gita.contractPy === undefined) co.gita.contractPy = 0; // 단계 15: 하위 호환
+
+    // 회사 행
+    const item = document.createElement('div');
+    item.className = 'co-item' + (co.id===activeCompanyId?' active':'');
+
+    // 선택 스와치 버튼
+    const sel = document.createElement('div');
+    sel.className = 'co-select' + (co.id===activeCompanyId?' selected':'');
+    sel.style.background = co.color;
+    sel.title = '클릭하여 이 회사로 선택';
+    sel.textContent = co.id===activeCompanyId ? '✓' : '';
+    sel.onclick = e => {
+      e.stopPropagation();
+      activeCompanyId = co.id;
+      excludeMode = false; editAreaMode = false; labelMode = false;
+      const excBtn = document.getElementById('btnExclude');
+      const editBtn = document.getElementById('btnEditArea');
+      const lblBtn = document.getElementById('btnLabelMode');
+      if (excBtn) excBtn.className = 'mode-btn';
+      if (editBtn) editBtn.className = 'mode-btn';
+      if (lblBtn) lblBtn.className = 'mode-btn';
+      renderCompanyList();
+    };
+
+    const cp = document.createElement('input');
+    cp.type='color'; cp.value=co.color; cp.className='co-color';
+    cp.title='색상 변경';
+    cp.onclick = e => e.stopPropagation();
+    cp.oninput = e => {
+      co.color = e.target.value;
+      renderFloor(); renderSummary(); saveState();
+    };
+
+    const nm = document.createElement('input');
+    nm.type='text'; nm.value=co.name; nm.className='co-name';
+    nm.placeholder='회사명';
+    nm.onclick = e => e.stopPropagation();
+    nm.oninput = e => { co.name=e.target.value; renderSummary(); saveState(); };
+
+    // 단계 9-B: 수동 면적 추가 버튼
+    const addExtra = document.createElement('button');
+    addExtra.className = 'btn-co-add-extra';
+    addExtra.title = '수동 면적 추가';
+    addExtra.textContent = '＋';
+    addExtra.onclick = e => {
+      e.stopPropagation();
+      const name = prompt('항목명:', '');
+      if (name === null || name.trim() === '') return;
+      const pyStr = prompt('평수 (평):', '');
+      if (pyStr === null) return;
+      const pyVal = parseFloat(pyStr);
+      if (isNaN(pyVal) || pyVal < 0) { alert('올바른 숫자를 입력하세요.'); return; }
+      co.extras.push({name: name.trim(), py: pyVal});
+      renderCompanyList(); renderSummary(); saveState();
+    };
+
+    const del = document.createElement('button');
+    del.className='co-del'; del.innerHTML='×'; del.title='삭제';
+    del.onclick = e => {
+      e.stopPropagation();
+      if (companies.length<=1) return alert('최소 1개 회사가 필요합니다.');
+      for (const fk in cellStates)
+        for (const k in cellStates[fk])
+          if (cellStates[fk][k]===co.id) delete cellStates[fk][k];
+      companies = companies.filter(c=>c.id!==co.id);
+      if (activeCompanyId===co.id) activeCompanyId=companies[0].id;
+      renderCompanyList(); renderFloor(); renderSummary(); saveState();
+    };
+
+    item.append(sel, cp, nm, addExtra, del);
+    list.appendChild(item);
+
+    // 단계 9-B: extras 항목 목록 렌더링
+    if (co.extras.length > 0) {
+      const extrasDiv = document.createElement('div');
+      extrasDiv.className = 'co-extras';
+      co.extras.forEach((ex, idx) => {
+        const row = document.createElement('div');
+        row.className = 'co-extra-item';
+        const xDel = document.createElement('button');
+        xDel.className = 'co-extra-del';
+        xDel.textContent = '×';
+        xDel.title = '항목 삭제';
+        xDel.onclick = e => {
+          e.stopPropagation();
+          co.extras.splice(idx, 1);
+          renderCompanyList(); renderSummary(); saveState();
+        };
+        const label = document.createElement('span');
+        label.textContent = `${ex.name}: ${fmt(ex.py)}평`;
+        row.append(xDel, label);
+        extrasDiv.appendChild(row);
+      });
+      list.appendChild(extrasDiv);
+    }
+  });
+}
+
+function addCompany() {
+  const color = PALETTE[companies.length % PALETTE.length];
+  const co = {id:nextId++, name:`회사 ${String.fromCharCode(64+companies.length+1)}`, color, extras:[], gita:{actualPy:0, contractPy:0}};
+  companies.push(co);
+  activeCompanyId = co.id;
+  renderCompanyList();
+}
+
+// ═══════════════════════════════════════════════════
+// SUMMARY — 단계 1: m²와 평 함께 표시, /3.3 공식 사용
+// ═══════════════════════════════════════════════════
+function calcFloorAreas(fk) {
+  const fl = FLOORS[fk];
+  const st = cellStates[fk];
+  const commons = COMMON_AREAS[fk] || new Set();
+  const res = {};
+  for (let yi=0;yi<fl.ySpans.length;yi++)
+    for (let xi=0;xi<fl.xSpans.length;xi++) {
+      if (commons.has(`${xi}_${yi}`)) continue;
+      if (isCellExcluded(fk, xi, yi)) continue; // 단계 2: 제외 셀 합산 제외
+      const key = `${xi}_${yi}`;
+      // 단계 12: split 셀 비례 합산
+      const splitData = (cellMeta[fk][key]||{}).split;
+      if (splitData) {
+        const area = getCellAreaMm2(fk, xi, yi);
+        const r = Math.max(0, Math.min(1, splitData.ratio||0.5));
+        if (splitData.co1Id) res[splitData.co1Id] = (res[splitData.co1Id]||0) + area * r;
+        if (splitData.co2Id) res[splitData.co2Id] = (res[splitData.co2Id]||0) + area * (1 - r);
+        continue;
+      }
+      const cid = st[key];
+      if (!cid) continue;
+      const area = getCellAreaMm2(fk, xi, yi); // 단계 3: customArea 우선
+      res[cid] = (res[cid]||0) + area;
+    }
+  return res;
+}
+
+// 단계 4: 4-2F totalMm2 실측 계산
+function calcFloorTotalMm2(fk) {
+  if (fk === '1F') {
+    // 단계 16: noAutoArea — customArea 셀 합산
+    let total = 0;
+    const fl = FLOORS['1F'];
+    for (let yi=0; yi<fl.ySpans.length; yi++)
+      for (let xi=0; xi<fl.xSpans.length; xi++) {
+        const meta = (cellMeta['1F'][`${xi}_${yi}`]||{});
+        if (meta.customArea !== undefined) total += meta.customArea * 3.3 * 1e6;
+      }
+    return total;
+  }
+  if (fk === '2-2F') {
+    // 2-2F 메자닌: 실측 합산
+    let total = 0;
+    for (let yi=0; yi<=6; yi++) {
+      for (let xi=5; xi<=10; xi++) total += getMezCellArea(xi, yi);
+      // xi=14 별도
+      if (yi<=5) total += getMezCellArea(14, yi);
+      for (let xi=15; xi<=19; xi++) total += getMezCellArea(xi, yi);
+      if (yi<=5) total += getMezCellArea(20, yi);
+      if (yi<=2) { total += getMezCellArea(21, yi); total += getMezCellArea(22, yi); }
+    }
+    return total;
+  }
+  if (fk === '4-2F') {
+    // 단계 4: 4-2F 메자닌 실측 계산 (TODO: 실측값 확인 필요)
+    let total = 0;
+    const fl = FLOORS['4-2F'];
+    for (let yi=0; yi<fl.ySpans.length; yi++)
+      for (let xi=0; xi<fl.xSpans.length; xi++)
+        total += get4FMezCellArea(xi, yi);
+    return total;
+  }
+  const fl = FLOORS[fk];
+  return fl.xSpans.reduce((a,b)=>a+b,0) * fl.ySpans.reduce((a,b)=>a+b,0);
+}
+
+function renderSummary() {
+  const sc = document.getElementById('summaryContent');
+  const fl = FLOORS[currentFloor];
+  const areas = calcFloorAreas(currentFloor);
+  const assigned = Object.values(areas).reduce((a,b)=>a+b,0);
+
+  // 단계 1: 총면적을 m²와 평 함께 표시
+  const totalMm2 = calcFloorTotalMm2(currentFloor);
+
+  let html = `<div class="section-label">현재 층 (${fl.label})</div>
+  <table class="stab"><thead><tr><th>회사</th><th>m²</th><th>평 (÷3.3)</th></tr></thead><tbody>`;
+
+  let hasAny = false;
+  companies.forEach(co => {
+    const a = areas[co.id]||0;
+    const extras = co.extras || [];
+    const extrasPy = extras.reduce((s,ex)=>s+ex.py,0);
+    if (!a && !extrasPy) return;
+    hasAny = true;
+    const totalPy = py(a) + extrasPy;
+    const totalM2 = m2(a) + extrasPy * 3.3;
+    html += `<tr><td><span class="dot" style="background:${co.color}"></span>${co.name}</td>
+      <td>${fmt(totalM2)}</td><td>${fmt(totalPy)}</td></tr>`;
+    // 단계 9-B: extras 항목 있으면 소계 행 표시
+    if (a > 0 && extrasPy > 0) {
+      html += `<tr class="total-row"><td style="padding-left:14px;font-size:10px;">└ 그리드</td>
+        <td style="font-size:10px;">${fmt(m2(a))}</td><td style="font-size:10px;">${fmt(py(a))}</td></tr>`;
+      extras.forEach(ex => {
+        html += `<tr class="total-row"><td style="padding-left:14px;font-size:10px;">└ ${ex.name}</td>
+          <td style="font-size:10px;">${fmt(ex.py*3.3)}</td><td style="font-size:10px;">${fmt(ex.py)}</td></tr>`;
+      });
+    } else if (extrasPy > 0 && !a) {
+      extras.forEach(ex => {
+        html += `<tr class="total-row"><td style="padding-left:14px;font-size:10px;">└ ${ex.name}</td>
+          <td style="font-size:10px;">${fmt(ex.py*3.3)}</td><td style="font-size:10px;">${fmt(ex.py)}</td></tr>`;
+      });
+    }
+  });
+
+  // 단계 9-B: extras 합산을 포함한 배정 합계
+  const allExtrasPy = companies.reduce((s,co)=>(co.extras||[]).reduce((ss,ex)=>ss+ex.py,s),0);
+  const totalAssigned = py(assigned) + allExtrasPy;
+  if (!hasAny) html += `<tr><td colspan="3" style="color:#a0aec0;font-size:11px;">아직 배정된 스판 없음</td></tr>`;
+  if (totalAssigned>0) html += `<tr class="subtotal"><td>배정 합계</td><td>${fmt(totalAssigned*3.3)}</td><td>${fmt(totalAssigned)}</td></tr>`;
+
+  // 단계 1: 층 전체 행에 m²와 평 모두 표시 (계산 근거 투명화)
+  html += `<tr class="total-row"><td>층 전체</td><td>${fmt(m2(totalMm2))}</td><td>${fmt(py(totalMm2))}</td></tr>`;
+  html += `<tr class="total-row"><td colspan="3" style="font-size:10px;color:#a0aec0;">계산: m² ÷ 3.3 = 평</td></tr>`;
+  html += `</tbody></table>`;
+
+  // 스판별 상세
+  if (assigned > 0) {
+    html += `<div class="section-label" style="margin-top:10px;">스판별 상세</div>
+    <table class="stab"><thead><tr><th>스판</th><th>회사</th><th>m²</th><th>평</th></tr></thead><tbody>`;
+    const commons = COMMON_AREAS[currentFloor] || new Set();
+    for (let xi=0; xi<fl.xSpans.length; xi++) {
+      const spanArea = {};
+      for (let yi=0;yi<fl.ySpans.length;yi++) {
+        if (commons.has(`${xi}_${yi}`)) continue;
+        if (isCellExcluded(currentFloor, xi, yi)) continue;
+        const key = `${xi}_${yi}`;
+        // 단계 12: split 셀 비례 합산
+        const splitData = (cellMeta[currentFloor][key]||{}).split;
+        if (splitData) {
+          const area = getCellAreaMm2(currentFloor, xi, yi);
+          const r = Math.max(0, Math.min(1, splitData.ratio||0.5));
+          if (splitData.co1Id) spanArea[splitData.co1Id] = (spanArea[splitData.co1Id]||0) + area * r;
+          if (splitData.co2Id) spanArea[splitData.co2Id] = (spanArea[splitData.co2Id]||0) + area * (1 - r);
+          continue;
+        }
+        const cid = cellStates[currentFloor][key];
+        if (!cid) continue;
+        const area = getCellAreaMm2(currentFloor, xi, yi);
+        spanArea[cid] = (spanArea[cid]||0) + area;
+      }
+      if (!Object.keys(spanArea).length) continue;
+      const sl = `${fl.xLabels[xi]}→${fl.xLabels[xi+1]}`;
+      Object.entries(spanArea).forEach(([cid,a]) => {
+        const co = companies.find(c=>c.id===+cid);
+        if (!co) return;
+        html += `<tr><td style="font-size:10px;color:#718096">${sl}</td>
+          <td><span class="dot" style="background:${co.color}"></span>${co.name}</td>
+          <td>${fmt(m2(a))}</td><td>${fmt(py(a))}</td></tr>`;
+      });
+    }
+    html += `</tbody></table>`;
+  }
+
+  sc.innerHTML = html;
+
+  // 단계 8: 전체 층 합계 테이블 별도 렌더
+  renderGlobalSummary();
+  // 단계 11: 모달이 열려 있으면 자동 리렌더
+  if (document.getElementById('summaryModalOverlay')?.classList.contains('open')) {
+    renderSummaryModal();
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 단계 8: 전체 층 합계 테이블 렌더링
+// 회사 × 층 매트릭스 형태로 표시
+// ═══════════════════════════════════════════════════
+function renderGlobalSummary() {
+  const gc = document.getElementById('globalSummaryContent');
+  if (!gc) return;
+
+  // 각 층별 회사별 면적 수집
+  const floorAreas = {}; // floorAreas[fk][cid] = mm²
+  FLOOR_ORDER.forEach(fk => { floorAreas[fk] = calcFloorAreas(fk); });
+
+  // 단계 9-B: extras가 있는 회사도 포함
+  const activeCompanyIds = new Set();
+  FLOOR_ORDER.forEach(fk => {
+    Object.keys(floorAreas[fk]).forEach(cid => activeCompanyIds.add(+cid));
+  });
+  companies.forEach(co => {
+    if ((co.extras||[]).length > 0) activeCompanyIds.add(co.id);
+    if (((co.gita||{}).actualPy||0) > 0) activeCompanyIds.add(co.id);
+  });
+  const activeCos = companies.filter(co => activeCompanyIds.has(co.id));
+
+  if (activeCos.length === 0) {
+    gc.innerHTML = '<div style="font-size:11px;color:#a0aec0;">배정된 스판 없음</div>';
+    return;
+  }
+
+  // 층 레이블 (짧게)
+  const floorLabels = { '1F':'1F', '2F':'2F', '2-2F':'2-2F', '4F':'4F', '4-2F':'4-2F' };
+
+  // 단계 13: 실/계약 두 줄 표시 (사이드바 폭 제약으로 셀 내 줄바꿈 방식)
+  const isMezFloor = fk => fk === '2-2F' || fk === '4-2F';
+
+  let html = `<table class="gtab"><thead><tr><th>회사</th>`;
+  FLOOR_ORDER.forEach(fk => { html += `<th>${floorLabels[fk]}</th>`; });
+  html += `<th>그외</th><th>기타</th><th>합계</th></tr></thead><tbody>`;
+
+  // 각 회사별 행
+  activeCos.forEach(co => {
+    let rowActual = 0, rowContract = 0;
+    html += `<tr><td><span class="dot" style="background:${co.color}"></span>${co.name}</td>`;
+    FLOOR_ORDER.forEach(fk => {
+      const a = floorAreas[fk][co.id] || 0;
+      const pyVal = py(a);
+      const cPyVal = contractPy(fk, pyVal);
+      rowActual += pyVal;
+      rowContract += cPyVal;
+      if (a > 0) {
+        const contractLine = isMezFloor(fk)
+          ? ''
+          : `<div style="font-size:9px;color:#c05621;">계:${fmt(cPyVal)}평</div>`;
+        html += `<td><div>${fmt(pyVal)}평</div>${contractLine}</td>`;
+      } else {
+        html += `<td class="gtab-zero">-</td>`;
+      }
+    });
+    const extrasPy = (co.extras||[]).reduce((s,ex)=>s+ex.py,0);
+    rowActual += extrasPy;
+    rowContract += extrasPy;
+    if (extrasPy > 0) {
+      html += `<td title="${(co.extras||[]).map(ex=>`${ex.name}: ${fmt(ex.py)}평`).join('\n')}">${fmt(extrasPy)}평</td>`;
+    } else {
+      html += `<td class="gtab-zero">-</td>`;
+    }
+    const gitaPy = ((co.gita||{}).actualPy)||0;
+    const gitaContract = gitaContractPy(co); // 단계 15: contractPy 직접값 우선
+    rowActual += gitaPy;
+    rowContract += gitaContract;
+    if (gitaPy > 0) {
+      const gitaIsManual = ((co.gita||{}).contractPy||0) > 0;
+      const contractLabel = gitaIsManual
+        ? `<div style="font-size:9px;color:#c05621;">계:${fmt(gitaContract)}평</div>`
+        : `<div style="font-size:9px;color:#c05621;">계:${fmt(gitaContract)}평<span style="font-size:8px;color:#9a7744;">(자동)</span></div>`;
+      html += `<td><div>${fmt(gitaPy)}평</div>${contractLabel}</td>`;
+    } else {
+      html += `<td class="gtab-zero">-</td>`;
+    }
+    html += `<td style="font-weight:700;">
+      <div>${fmt(rowActual)}평</div>
+      <div style="font-size:9px;color:#1e40af;">계:${fmt(rowContract)}평</div>
+    </td></tr>`;
+  });
+
+  // 합계 행
+  html += `<tr class="gtab-total"><td>합계</td>`;
+  let grandActual = 0, grandContract = 0;
+  FLOOR_ORDER.forEach(fk => {
+    const floorTotal = Object.values(floorAreas[fk]).reduce((a,b)=>a+b,0);
+    const floorPy = py(floorTotal);
+    const cPy = contractPy(fk, floorPy);
+    grandActual += floorPy;
+    grandContract += cPy;
+    if (floorTotal > 0) {
+      const contractLine = isMezFloor(fk) ? '' : `<div style="font-size:9px;color:#c05621;">계:${fmt(cPy)}평</div>`;
+      html += `<td><div>${fmt(floorPy)}평</div>${contractLine}</td>`;
+    } else {
+      html += `<td>-</td>`;
+    }
+  });
+  const allExtrasPy = companies.reduce((s,co)=>(co.extras||[]).reduce((ss,ex)=>ss+ex.py,s),0);
+  grandActual += allExtrasPy;
+  grandContract += allExtrasPy;
+  html += `<td>${allExtrasPy > 0 ? fmt(allExtrasPy)+'평' : '-'}</td>`;
+  const allGitaPy = companies.reduce((s,co)=>s+(((co.gita||{}).actualPy)||0),0);
+  const allGitaContract = companies.reduce((s,co)=>s+gitaContractPy(co), 0); // 단계 15: 직접값 우선
+  grandActual += allGitaPy;
+  grandContract += allGitaContract;
+  html += `<td>${allGitaPy > 0 ? `<div>${fmt(allGitaPy)}평</div><div style="font-size:9px;color:#c05621;">계:${fmt(allGitaContract)}평</div>` : '-'}</td>`;
+  html += `<td>
+    <div>${fmt(grandActual)}평</div>
+    <div style="font-size:9px;color:#1e40af;">계:${fmt(grandContract)}평</div>
+  </td></tr>`;
+
+  html += `</tbody></table>`;
+  gc.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════
+// MODE
+// ═══════════════════════════════════════════════════
+function setMode(m) {
+  paintMode = m;
+  document.getElementById('btnSpan').classList.toggle('active', m==='span');
+  document.getElementById('btnCell').classList.toggle('active', m==='cell');
+}
+
+function clearFloor() {
+  if (!confirm(`${FLOORS[currentFloor].label}의 모든 색상을 초기화할까요?`)) return;
+  cellStates[currentFloor] = {};
+  renderFloor(); renderSummary(); saveState();
+}
+
+// ═══════════════════════════════════════════════════
+// CSV EXPORT
+// ═══════════════════════════════════════════════════
+function exportCSV() {
+  // 단계 7: 레이블 컬럼 추가
+  let csv = '﻿층,스판,X,Y,회사,면적(m²),평수(평),레이블\n';
+  FLOOR_ORDER.forEach(fk => {
+    const fl = FLOORS[fk];
+    const commons = COMMON_AREAS[fk] || new Set();
+    for (let xi=0;xi<fl.xSpans.length;xi++) {
+      for (let yi=0;yi<fl.ySpans.length;yi++) {
+        if (commons.has(`${xi}_${yi}`)) continue;
+        if (isCellExcluded(fk, xi, yi)) continue;
+        const key = `${xi}_${yi}`;
+        const sl = `${fl.xLabels[xi]}~${fl.xLabels[xi+1]||''}`;
+        const xLbl = fl.xLabels[xi] || `X${xi}`;
+        const yLbl = fl.yLabels[yi] || `Y${yi}`;
+        const cellLabel = (cellMeta[fk][key] || {}).label || '';
+        const safeLabel = cellLabel.includes(',') ? `"${cellLabel}"` : cellLabel;
+        // 단계 12: split 셀 두 행으로 출력
+        const splitData = (cellMeta[fk][key]||{}).split;
+        if (splitData) {
+          const area = getCellAreaMm2(fk, xi, yi);
+          const r = Math.max(0, Math.min(1, splitData.ratio||0.5));
+          const co1 = companies.find(c=>c.id===splitData.co1Id);
+          const co2 = companies.find(c=>c.id===splitData.co2Id);
+          if (co1) {
+            const a1 = area * r;
+            const safeName1 = co1.name.includes(',') ? `"${co1.name}"` : co1.name;
+            csv += `${fl.label},${sl},${xLbl},${yLbl},${safeName1},${m2(a1).toFixed(1)},${py(a1).toFixed(1)},${safeLabel}\n`;
+          }
+          if (co2) {
+            const a2 = area * (1 - r);
+            const safeName2 = co2.name.includes(',') ? `"${co2.name}"` : co2.name;
+            csv += `${fl.label},${sl},${xLbl},${yLbl},${safeName2},${m2(a2).toFixed(1)},${py(a2).toFixed(1)},${safeLabel}\n`;
+          }
+          continue;
+        }
+        const cid = cellStates[fk][key];
+        if (!cid) continue;
+        const area = getCellAreaMm2(fk, xi, yi);
+        const co = companies.find(c=>c.id===cid);
+        if (!co) continue;
+        csv += `${fl.label},${sl},${xLbl},${yLbl},${co.name},${m2(area).toFixed(1)},${py(area).toFixed(1)},${safeLabel}\n`;
+      }
+    }
+  });
+  // 단계 9-B: extras 항목 별도 행 추가 (층=-, 스판=-, 레이블=항목명)
+  companies.forEach(co => {
+    (co.extras||[]).forEach(ex => {
+      const safeName = co.name.includes(',') ? `"${co.name}"` : co.name;
+      const safeExName = ex.name.includes(',') ? `"${ex.name}"` : ex.name;
+      csv += `-,-,-,-,${safeName},${(ex.py*3.3).toFixed(1)},${ex.py.toFixed(1)},${safeExName}\n`;
+    });
+  });
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='물류센터_평수요약.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════
+// 단계 5: JSON EXPORT / IMPORT
+// ═══════════════════════════════════════════════════
+function exportJSON() {
+  const data = {
+    version: 'v3',
+    cellStates,
+    cellMeta,
+    companies,
+    nextId,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='물류센터_현황.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function importJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = ''; // 같은 파일 재선택 허용
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.version || data.version !== 'v3') {
+        alert('지원하지 않는 파일 형식입니다.\n(version: "v3" 필드가 필요합니다)');
+        return;
+      }
+      if (!data.cellStates || !data.companies) {
+        alert('파일 형식 오류: cellStates 또는 companies 필드가 없습니다.');
+        return;
+      }
+      // 상태 복원
+      FLOOR_ORDER.forEach(fk => {
+        if (data.cellStates[fk]) cellStates[fk] = data.cellStates[fk];
+        if (data.cellMeta && data.cellMeta[fk]) cellMeta[fk] = data.cellMeta[fk];
+      });
+      companies = data.companies;
+      nextId = data.nextId || (companies.length + 1);
+      activeCompanyId = companies.length ? companies[0].id : null;
+      // localStorage 업데이트
+      saveState();
+      // 재렌더
+      buildTabs();
+      renderCompanyList();
+      renderFloor();
+      renderSummary();
+      alert('JSON 파일을 성공적으로 불러왔습니다.');
+    } catch(err) {
+      alert(`파일 읽기 오류: ${err.message}`);
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+// ═══════════════════════════════════════════════════
+// PERSIST
+// ═══════════════════════════════════════════════════
+function saveState() {
+  try {
+    localStorage.setItem('warehouse_v3', JSON.stringify({cellStates, cellMeta, companies, nextId}));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('warehouse_v3');
+    if (!s) return;
+    const d = JSON.parse(s);
+    if (d.cellStates) FLOOR_ORDER.forEach(fk => {
+      if (d.cellStates[fk]) cellStates[fk] = d.cellStates[fk];
+      if (d.cellMeta && d.cellMeta[fk]) cellMeta[fk] = d.cellMeta[fk];
+    });
+    if (d.companies) {
+      companies = d.companies;
+      nextId = d.nextId || companies.length + 1;
+      // 단계 9-B: 하위 호환 — 구 데이터에 extras 필드 없으면 초기화
+      companies.forEach(co => {
+        if (!co.extras) co.extras = [];
+        if (!co.gita) co.gita = {actualPy:0, contractPy:0}; // 단계 14: 하위 호환
+        if (co.gita.contractPy === undefined) co.gita.contractPy = 0; // 단계 15: 하위 호환
+      });
+    }
+    if (companies.length && !companies.find(c=>c.id===activeCompanyId)) activeCompanyId=companies[0].id;
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════
+// 단계 11: 요약 전용 모달
+// ═══════════════════════════════════════════════════
+function openSummaryModal() {
+  const overlay = document.getElementById('summaryModalOverlay');
+  overlay.classList.add('open');
+  renderSummaryModal();
+}
+
+function closeSummaryModal() {
+  document.getElementById('summaryModalOverlay').classList.remove('open');
+}
+
+function handleModalOverlayClick(e) {
+  if (e.target === document.getElementById('summaryModalOverlay')) closeSummaryModal();
+}
+
+function renderSummaryModal() {
+  const body = document.getElementById('summaryModalBody');
+  if (!body) return;
+
+  const floorLabels = { '1F':'1F 전체', '2F':'2F 전체', '2-2F':'2F 메자닌', '4F':'4F 전체', '4-2F':'4-2F 메자닌' };
+  const isMezFloor = fk => fk === '2-2F' || fk === '4-2F';
+
+  const floorAreas = {};
+  FLOOR_ORDER.forEach(fk => { floorAreas[fk] = calcFloorAreas(fk); });
+
+  const activeIds = new Set();
+  FLOOR_ORDER.forEach(fk => Object.keys(floorAreas[fk]).forEach(cid => activeIds.add(+cid)));
+  companies.forEach(co => { if ((co.extras||[]).length > 0) activeIds.add(co.id); });
+  const activeCos = companies.filter(co => activeIds.has(co.id));
+
+  if (activeCos.length === 0) {
+    body.innerHTML = '<p style="color:#a0aec0;text-align:center;padding:40px;">배정된 스판이 없습니다.</p>';
+    return;
+  }
+
+  // 단계 13: 실/계약 이중 열 구조
+  // thead 1행: 층 그룹 (colspan=2) + 그외 + 합계(colspan=2)
+  // thead 2행: 실면적 | 계약면적 per floor + 실합계 | 계약합계
+  let html = `<table class="modal-gtab"><thead>
+    <tr>
+      <th rowspan="2" style="text-align:left;min-width:110px;vertical-align:middle;">회사</th>`;
+  FLOOR_ORDER.forEach(fk => {
+    const label = floorLabels[fk];
+    const subLabel = isMezFloor(fk) ? '(실면적 기준)' : '';
+    html += `<th colspan="2" style="background:#f0f4f8;">${label}<br><span style="font-size:10px;font-weight:normal;color:#718096;">${subLabel}</span></th>`;
+  });
+  // 단계 14: 기타 열 (colspan=2)
+  html += `<th colspan="2" style="background:#f0fdf4;">기타<br><span style="font-size:10px;font-weight:normal;color:#718096;">(직접입력)</span></th>`;
+  html += `<th rowspan="2" style="vertical-align:middle;">그외</th>
+      <th colspan="2" style="background:#dbeafe;">합계</th>
+    </tr>
+    <tr>`;
+  FLOOR_ORDER.forEach(fk => {
+    if (isMezFloor(fk)) {
+      html += `<th style="font-size:11px;background:#f7fafc;color:#4a5568;">실면적</th>
+               <th style="font-size:11px;background:#f7fafc;color:#718096;">실면적</th>`;
+    } else {
+      html += `<th style="font-size:11px;background:#f7fafc;color:#4a5568;">실면적</th>
+               <th style="font-size:11px;background:#fff7ed;color:#9c4221;">계약면적</th>`;
+    }
+  });
+  // 단계 14: 기타 서브헤더
+  html += `<th style="font-size:11px;background:#f0fdf4;color:#166534;">실면적</th>
+            <th style="font-size:11px;background:#dcfce7;color:#14532d;">계약면적</th>`;
+  html += `<th style="font-size:11px;background:#eff6ff;color:#1e40af;">실면적</th>
+            <th style="font-size:11px;background:#dbeafe;color:#1e3a8a;">계약면적</th>
+    </tr></thead><tbody>`;
+
+  // 열별 합계 누적 (실/계약 분리)
+  const colActual = {}, colContract = {};
+  FLOOR_ORDER.forEach(fk => { colActual[fk] = 0; colContract[fk] = 0; });
+  let allExtrasPy = 0;
+  let totalGitaActual = 0, totalGitaContract = 0;
+  let grandActual = 0, grandContract = 0;
+
+  const mkCell = (pyVal, cPyVal, bg) => {
+    if (pyVal <= 0) return `<td class="modal-zero">—</td><td class="modal-zero">—</td>`;
+    const bgStyle = bg ? `style="background:${bg}"` : '';
+    const bgStyle2 = bg ? `style="background:${bg};"` : 'style="background:#fff7ed;"';
+    return `<td ${bgStyle}>
+      <div class="modal-cell-val">${fmt(pyVal)}평</div>
+      <div class="modal-cell-sub">${fmt(pyVal*3.3)}m²</div>
+    </td><td ${bgStyle2}>
+      <div class="modal-cell-val" style="color:#9c4221;">${fmt(cPyVal)}평</div>
+      <div class="modal-cell-sub">${fmt(cPyVal*3.3)}m²</div>
+    </td>`;
+  };
+
+  activeCos.forEach(co => {
+    let rowActual = 0, rowContract = 0;
+    const coIdx = companies.findIndex(c => c.id === co.id);
+    html += `<tr><td><div class="modal-co-name">
+      <span class="modal-dot" style="background:${co.color}"></span>${co.name}
+    </div></td>`;
+
+    FLOOR_ORDER.forEach(fk => {
+      const a = floorAreas[fk][co.id] || 0;
+      const pyVal = py(a);
+      const cPyVal = contractPy(fk, pyVal);
+      colActual[fk] += pyVal;
+      colContract[fk] += cPyVal;
+      rowActual += pyVal;
+      rowContract += cPyVal;
+      html += mkCell(pyVal, cPyVal);
+    });
+
+    // 단계 14: 기타 열 (클릭 편집)
+    // 단계 15: 계약면적도 직접 입력 지원 — contractPy > 0이면 직접값, 아니면 자동 계산
+    const gitaActual = (co.gita||{}).actualPy || 0;
+    const gitaContractVal = gitaContractPy(co);
+    const gitaIsManual = ((co.gita||{}).contractPy||0) > 0;
+    totalGitaActual += gitaActual;
+    totalGitaContract += gitaContractVal;
+    rowActual += gitaActual;
+    rowContract += gitaContractVal;
+    if (gitaActual > 0) {
+      const contractDisplay = gitaIsManual
+        ? `<div class="modal-cell-val" style="color:#14532d;">${fmt(gitaContractVal)}평</div>
+           <div class="modal-cell-sub">${fmt(gitaContractVal*3.3)}m²</div>`
+        : `<div class="modal-cell-val" style="color:#14532d;">${fmt(gitaContractVal)}평</div>
+           <div class="modal-cell-sub" style="color:#9a7744;">(자동)</div>`;
+      html += `<td style="cursor:pointer;background:#f0fdf4;" onclick="editGita(${coIdx})" title="클릭하여 수정">
+        <div class="modal-cell-val" style="color:#166534;">${fmt(gitaActual)}평</div>
+        <div class="modal-cell-sub">${fmt(gitaActual*3.3)}m²</div>
+      </td><td style="cursor:pointer;background:#dcfce7;" onclick="editGitaContract(${coIdx})" title="클릭하여 계약면적 수정">
+        ${contractDisplay}
+      </td>`;
+    } else {
+      html += `<td class="modal-zero" style="cursor:pointer;" onclick="editGita(${coIdx})" title="클릭하여 입력">＋</td>
+               <td class="modal-zero" style="cursor:pointer;" onclick="editGitaContract(${coIdx})" title="실면적 입력 후 수정 가능">—</td>`;
+    }
+
+    // extras 열 (계약 변환 없음)
+    const extrasPy = (co.extras||[]).reduce((s, ex) => s + ex.py, 0);
+    rowActual += extrasPy;
+    rowContract += extrasPy;
+    allExtrasPy += extrasPy;
+    if (extrasPy > 0) {
+      const tip = (co.extras||[]).map(ex => `${ex.name}: ${fmt(ex.py)}평`).join('\n');
+      html += `<td title="${tip}">
+        <div class="modal-cell-val">${fmt(extrasPy)}평</div>
+        <div class="modal-cell-sub">${(co.extras||[]).length}항목</div>
+      </td>`;
+    } else {
+      html += `<td class="modal-zero">—</td>`;
+    }
+
+    grandActual += rowActual;
+    grandContract += rowContract;
+    html += `<td style="background:#eff6ff;">
+      <div class="modal-cell-val" style="font-size:17px;">${fmt(rowActual)}평</div>
+      <div class="modal-cell-sub">${fmt(rowActual*3.3)}m²</div>
+    </td><td style="background:#dbeafe;">
+      <div class="modal-cell-val" style="font-size:17px;color:#1e3a8a;">${fmt(rowContract)}평</div>
+      <div class="modal-cell-sub">${fmt(rowContract*3.3)}m²</div>
+    </td></tr>`;
+  });
+
+  // 합계 행
+  html += `<tr class="modal-total-row"><td><div class="modal-co-name">합계</div></td>`;
+  FLOOR_ORDER.forEach(fk => {
+    html += mkCell(colActual[fk], colContract[fk], colActual[fk] > 0 ? '' : null);
+  });
+  // 기타 합계
+  if (totalGitaActual > 0) {
+    html += `<td style="background:#f0fdf4;"><div class="modal-cell-val" style="color:#166534;">${fmt(totalGitaActual)}평</div></td>
+             <td style="background:#dcfce7;"><div class="modal-cell-val" style="color:#14532d;">${fmt(totalGitaContract)}평</div></td>`;
+  } else {
+    html += `<td class="modal-zero">—</td><td class="modal-zero">—</td>`;
+  }
+  html += allExtrasPy > 0
+    ? `<td><div class="modal-cell-val">${fmt(allExtrasPy)}평</div></td>`
+    : `<td class="modal-zero">—</td>`;
+  html += `<td style="background:#eff6ff;">
+    <div class="modal-cell-val" style="font-size:18px;">${fmt(grandActual)}평</div>
+    <div class="modal-cell-sub">${fmt(grandActual*3.3)}m²</div>
+  </td><td style="background:#bfdbfe;">
+    <div class="modal-cell-val" style="font-size:18px;color:#1e3a8a;">${fmt(grandContract)}평</div>
+    <div class="modal-cell-sub">${fmt(grandContract*3.3)}m²</div>
+  </td></tr>`;
+
+  html += `</tbody></table>`;
+  body.innerHTML = html;
+}
+
+// 단계 14: 기타 실면적 직접 입력
+function editGita(coIdx) {
+  const co = companies[coIdx];
+  if (!co) return;
+  const current = (co.gita||{}).actualPy || 0;
+  const input = prompt(`${co.name} — 기타 실면적 입력 (평 단위):\n계약면적은 실면적÷77.55%로 자동 계산됩니다.`, current > 0 ? current : '');
+  if (input === null) return;
+  const val = parseFloat(input);
+  if (isNaN(val) || val < 0) { alert('올바른 숫자를 입력하세요.'); return; }
+  if (!co.gita) co.gita = {actualPy:0, contractPy:0};
+  co.gita.actualPy = val;
+  saveState();
+  renderSummaryModal();
+  renderSummary();
+}
+
+// 단계 15: 기타 계약면적 직접 입력
+function editGitaContract(coIdx) {
+  const co = companies[coIdx];
+  if (!co) return;
+  const autoVal = ((co.gita||{}).actualPy||0) > 0 ? fmt((co.gita.actualPy / 0.7755)) : '0';
+  const current = ((co.gita||{}).contractPy||0) > 0 ? (co.gita.contractPy) : '';
+  const input = prompt(
+    `${co.name} — 기타 계약면적 직접 입력 (평 단위)\n빈 값 입력 시 자동 계산(실면적÷77.55% = 약 ${autoVal}평)으로 초기화됩니다.`,
+    current
+  );
+  if (input === null) return;
+  if (!co.gita) co.gita = {actualPy:0, contractPy:0};
+  if (input.trim() === '') {
+    co.gita.contractPy = 0;
+  } else {
+    const val = parseFloat(input);
+    if (isNaN(val) || val < 0) { alert('올바른 숫자를 입력하세요.'); return; }
+    co.gita.contractPy = val;
+  }
+  saveState();
+  renderSummaryModal();
+  renderSummary();
+}
+
+// ESC 키로 모달 닫기
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeSummaryModal();
+});
+
+// ═══════════════════════════════════════════════════
+// PPT EXPORT
+// ═══════════════════════════════════════════════════
+function wrapSVGfor169(srcSvg, slideW, slideH) {
+  const srcW = +srcSvg.getAttribute('width');
+  const srcH = +srcSvg.getAttribute('height');
+  const slideRatio = slideW / slideH;
+  const srcRatio   = srcW  / srcH;
+  let viewW, viewH, offX, offY;
+  if (srcRatio > slideRatio) {
+    viewW = srcW; viewH = srcW / slideRatio;
+    offX  = 0;    offY  = (viewH - srcH) / 2;
+  } else {
+    viewH = srcH; viewW = srcH * slideRatio;
+    offY  = 0;    offX  = (viewW - srcW) / 2;
+  }
+  viewW = Math.round(viewW); viewH = Math.round(viewH);
+  const NS = 'http://www.w3.org/2000/svg';
+  const wrap = document.createElementNS(NS, 'svg');
+  wrap.setAttribute('xmlns', NS);
+  wrap.setAttribute('width',  viewW);
+  wrap.setAttribute('height', viewH);
+  const bg = document.createElementNS(NS, 'rect');
+  bg.setAttribute('width', viewW); bg.setAttribute('height', viewH);
+  bg.setAttribute('fill', '#ffffff');
+  wrap.appendChild(bg);
+  const g = document.createElementNS(NS, 'g');
+  g.setAttribute('transform', `translate(${Math.round(offX)},${Math.round(offY)})`);
+  Array.from(srcSvg.childNodes).forEach(n => g.appendChild(n.cloneNode(true)));
+  wrap.appendChild(g);
+  return wrap;
+}
+
+function svgToDataURL(svgEl) {
+  return new Promise((resolve, reject) => {
+    const svgW = +svgEl.getAttribute('width');
+    const svgH = +svgEl.getAttribute('height');
+    const xml = new XMLSerializer().serializeToString(svgEl);
+    const blob = new Blob([xml], {type:'image/svg+xml;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const scale = 2; // retina quality
+      canvas.width = svgW * scale;
+      canvas.height = svgH * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, svgW, svgH);
+      ctx.drawImage(img, 0, 0, svgW, svgH);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// PPT 요약표 위치 설정 모달
+// ═══════════════════════════════════════════════════
+let pptTableXFrac = null;
+let pptTableYFrac = null;
+let _pptDragCleanup = null;
+
+function openPPTPositionModal() {
+  document.getElementById('pptPosOverlay').classList.add('open');
+  requestAnimationFrame(() => buildPPTPositionPreview());
+}
+
+function buildPPTPositionPreview() {
+  const fk = currentFloor;
+  const floorAreaMap = calcFloorAreas(fk);
+  const rows = [];
+  companies.forEach(co => {
+    const mm2 = floorAreaMap[co.id] || 0;
+    if (mm2 <= 0) return;
+    const py = mm2 / 3.3e6;
+    rows.push({ name: co.name, color: co.color, py, cpy: contractPy(fk, py) });
+  });
+  const totalPy = rows.reduce((s, r) => s + r.py, 0);
+  const totalCPy = rows.reduce((s, r) => s + r.cpy, 0);
+
+  let html = `<table style="border-collapse:collapse;font-size:9px;background:white;">`;
+  html += `<tr>
+    <th style="background:#1A3A5C;color:white;padding:2px 5px;width:8px;"></th>
+    <th style="background:#1A3A5C;color:white;padding:2px 8px;white-space:nowrap;">회사</th>
+    <th style="background:#1A3A5C;color:white;padding:2px 8px;white-space:nowrap;">실면적</th>
+    <th style="background:#2C5282;color:white;padding:2px 8px;white-space:nowrap;">계약면적</th>
+  </tr>`;
+  rows.forEach(r => {
+    html += `<tr>
+      <td style="background:${r.color};padding:2px 4px;"></td>
+      <td style="padding:2px 8px;border:1px solid #e2e8f0;white-space:nowrap;">${r.name}</td>
+      <td style="padding:2px 8px;text-align:right;border:1px solid #e2e8f0;">${Math.round(r.py)}평</td>
+      <td style="padding:2px 8px;text-align:right;background:#EEF4FF;border:1px solid #e2e8f0;">${Math.round(r.cpy)}평</td>
+    </tr>`;
+  });
+  html += `<tr style="background:#EEF2F7;font-weight:bold;">
+    <td style="padding:2px 4px;"></td>
+    <td style="padding:2px 8px;color:#1A3A5C;">합계</td>
+    <td style="padding:2px 8px;text-align:right;color:#1A3A5C;">${Math.round(totalPy)}평</td>
+    <td style="padding:2px 8px;text-align:right;color:#1A3A5C;background:#DDE6F0;">${Math.round(totalCPy)}평</td>
+  </tr></table>`;
+
+  const handle = document.getElementById('pptTableHandle');
+  handle.innerHTML = html;
+
+  const preview = document.getElementById('pptSlidePreview');
+  const oldSvg = preview.querySelector('svg');
+  if (oldSvg) oldSvg.remove();
+
+  const svg = buildFloorSVG(fk, cellStates[fk], true, null);
+  svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;opacity:0.65;pointer-events:none;';
+  svg.removeAttribute('id');
+  preview.insertBefore(svg, handle);
+
+  // 핸들 위치 설정 (렌더 후)
+  requestAnimationFrame(() => {
+    const pr = preview.getBoundingClientRect();
+    const SLIDE_W = 13.33, SLIDE_H = 7.5, MARGIN = 0.31;
+    const tableW = 0.18 + 2.2 + 1.55 + 1.55;
+    const TABLE_H = (rows.length + 1) * 0.28 + 0.04;
+    const defXFrac = (SLIDE_W - MARGIN - tableW) / SLIDE_W;
+    const defYFrac = (SLIDE_H - TABLE_H - 0.08) / SLIDE_H;
+    const xFrac = pptTableXFrac !== null ? pptTableXFrac : defXFrac;
+    const yFrac = pptTableYFrac !== null ? pptTableYFrac : defYFrac;
+    handle.style.left = (xFrac * pr.width) + 'px';
+    handle.style.top  = (yFrac * pr.height) + 'px';
+
+    if (_pptDragCleanup) _pptDragCleanup();
+    _pptDragCleanup = setupPPTDrag(handle, preview);
+  });
+}
+
+function setupPPTDrag(handle, container) {
+  let dragging = false, sx, sy, sl, st;
+
+  const onDown = e => {
+    if (e.button !== 0) return;
+    dragging = true;
+    handle.classList.add('dragging');
+    const cr = container.getBoundingClientRect();
+    const hr = handle.getBoundingClientRect();
+    sx = e.clientX; sy = e.clientY;
+    sl = hr.left - cr.left; st = hr.top - cr.top;
+    e.preventDefault();
+  };
+  const onMove = e => {
+    if (!dragging) return;
+    const cr = container.getBoundingClientRect();
+    let nl = sl + (e.clientX - sx);
+    let nt = st + (e.clientY - sy);
+    nl = Math.max(0, Math.min(cr.width  - handle.offsetWidth,  nl));
+    nt = Math.max(0, Math.min(cr.height - handle.offsetHeight, nt));
+    handle.style.left = nl + 'px';
+    handle.style.top  = nt + 'px';
+  };
+  const onUp = () => {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    const cr = container.getBoundingClientRect();
+    pptTableXFrac = parseFloat(handle.style.left) / cr.width;
+    pptTableYFrac = parseFloat(handle.style.top)  / cr.height;
+  };
+
+  handle.addEventListener('mousedown', onDown);
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  return () => {
+    handle.removeEventListener('mousedown', onDown);
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+}
+
+function resetPPTTablePos() {
+  pptTableXFrac = null;
+  pptTableYFrac = null;
+  buildPPTPositionPreview();
+}
+
+function closePPTPos() {
+  document.getElementById('pptPosOverlay').classList.remove('open');
+  if (_pptDragCleanup) { _pptDragCleanup(); _pptDragCleanup = null; }
+}
+
+function confirmPPTGenerate() {
+  closePPTPos();
+  exportPPT();
+}
+
+async function exportPPT() {
+  const btn = document.getElementById('btnPPT');
+  btn.disabled = true;
+  btn.textContent = '⏳ 생성 중...';
+  try {
+    const pptx = new PptxGenJS();
+    pptx.layout = 'LAYOUT_WIDE'; // 13.33 × 7.5 in (= 33.87 × 19.05 cm)
+
+    // pptxgenjs 좌표/크기 단위는 인치(inch). LAYOUT_WIDE = 13.33 × 7.5 in
+    const SLIDE_W = 13.33;  // inches
+    const SLIDE_H = 7.5;    // inches
+    const MARGIN  = 0.31;   // inches (~0.8cm)
+    const IMG_W   = SLIDE_W - MARGIN * 2;  // ~12.71in
+    const SVG_PX_WIDTH = 1200;
+
+    const floorLabels = {
+      '1F': '1F 전체',
+      '2F': '2F 전체',
+      '2-2F': '2F 메자닌',
+      '4F': '4F 전체',
+      '4-2F': '4-2F 메자닌',
+    };
+
+    for (const fk of FLOOR_ORDER) {
+      const fl = FLOORS[fk];
+      const slide = pptx.addSlide();
+
+      // background
+      slide.background = { color: 'F5F7FA' };
+
+      // title bar
+      slide.addText(`🏭 아암센터 면적 관리  —  ${floorLabels[fk] || fk}`, {
+        x: 0, y: 0, w: SLIDE_W, h: 0.43,
+        fill: { color: '1A3A5C' },
+        line: { type: 'none' },
+        fontSize: 16, bold: true, color: 'FFFFFF',
+        valign: 'middle',
+        inset: 0.12,
+      });
+
+      // build SVG off-screen
+      const svg = buildFloorSVG(fk, cellStates[fk], true, SVG_PX_WIDTH);
+      const svgH = +svg.getAttribute('height');
+      const svgW = +svg.getAttribute('width');
+      const ratio = svgH / svgW;
+      const imgY = 0.51;  // inches, just below title bar
+
+      // 요약 계산: 웹 앱과 동일한 calcFloorAreas 사용
+      const floorAreaMap = calcFloorAreas(fk); // {coId: mm²}
+      const summaryRows = [];
+      let totalPy = 0;
+      let totalCPy = 0;
+      companies.forEach(co => {
+        const mm2 = floorAreaMap[co.id] || 0;
+        if (mm2 <= 0) return;
+        const pyVal = mm2 / 3.3e6;
+        const cpyVal = contractPy(fk, pyVal);
+        summaryRows.push({ name: co.name, color: co.color, py: pyVal, cpy: cpyVal });
+        totalPy += pyVal;
+        totalCPy += cpyVal;
+      });
+
+      // 도면을 슬라이드 배경으로 설정 (배경은 PPT에서 선택 불가 → 요약표 자유 이동 가능)
+      const bgSvg = wrapSVGfor169(svg, SLIDE_W, SLIDE_H);
+      slide.background = { data: await svgToDataURL(bgSvg) };
+
+      // 회사별 평수 요약표: 도면 우하단에 오버레이
+      if (summaryRows.length) {
+        const ROW_H = 0.28;
+        const TABLE_H = (summaryRows.length + 1) * ROW_H + 0.04;
+        const COL_CLR = 0.18, COL_NAME = 2.2, COL_REAL = 1.55, COL_CONTRACT = 1.55;
+        const fmtAreaCell = py => Math.round(py) + '평';
+        const tableW = COL_CLR + COL_NAME + COL_REAL + COL_CONTRACT;
+        const tableX = pptTableXFrac !== null ? pptTableXFrac * SLIDE_W : SLIDE_W - MARGIN - tableW;
+        const tableY = pptTableYFrac !== null ? pptTableYFrac * SLIDE_H : SLIDE_H - TABLE_H - 0.08;
+        const headerRow = [
+          { text: '', options: { bold: true, fill: '1A3A5C', fontSize: 9 } },
+          { text: '회사', options: { bold: true, color: 'FFFFFF', fill: '1A3A5C', align: 'center', fontSize: 9 } },
+          { text: '실면적 (평/m²)', options: { bold: true, color: 'FFFFFF', fill: '1A3A5C', align: 'center', fontSize: 9 } },
+          { text: '계약면적 (평/m²)', options: { bold: true, color: 'FFFFFF', fill: '2C5282', align: 'center', fontSize: 9 } },
+        ];
+        const dataTableRows = summaryRows.map(r => ([
+          { text: '', options: { fill: r.color.replace('#',''), fontSize: 9 } },
+          { text: r.name, options: { color: '1A1A1A', fill: 'FFFFFF', fontSize: 9 } },
+          { text: fmtAreaCell(r.py), options: { color: '1A1A1A', fill: 'FFFFFF', align: 'right', fontSize: 8 } },
+          { text: fmtAreaCell(r.cpy), options: { color: '1A3A5C', fill: 'EEF4FF', align: 'right', fontSize: 8 } },
+        ]));
+        const totalRow = [
+          { text: '', options: { bold: true, fill: 'EEF2F7', fontSize: 9 } },
+          { text: '합계', options: { bold: true, color: '1A3A5C', fill: 'EEF2F7', fontSize: 9 } },
+          { text: fmtAreaCell(totalPy), options: { bold: true, color: '1A3A5C', fill: 'EEF2F7', align: 'right', fontSize: 8 } },
+          { text: fmtAreaCell(totalCPy), options: { bold: true, color: '1A3A5C', fill: 'DDE6F0', align: 'right', fontSize: 8 } },
+        ];
+        slide.addTable([headerRow, ...dataTableRows, totalRow], {
+          x: tableX, y: tableY,
+          w: tableW,
+          rowH: ROW_H,
+          border: { pt: 0.5, color: 'C8D0DC' },
+          colW: [COL_CLR, COL_NAME, COL_REAL, COL_CONTRACT],
+        });
+      }
+    }
+
+    // ── 전체 현황 요약 슬라이드 ──────────────────────────
+    const allFloorAreas = {};
+    FLOOR_ORDER.forEach(fk => { allFloorAreas[fk] = calcFloorAreas(fk); });
+
+    const activeIds = new Set();
+    FLOOR_ORDER.forEach(fk => Object.keys(allFloorAreas[fk]).forEach(cid => activeIds.add(+cid)));
+    companies.forEach(co => {
+      if (((co.extras||[]).length > 0) || ((co.gita||{}).actualPy > 0)) activeIds.add(co.id);
+    });
+    const activeCos = companies.filter(co => activeIds.has(co.id));
+
+    if (activeCos.length > 0) {
+      const sumSlide = pptx.addSlide();
+      sumSlide.background = { color: 'F5F7FA' };
+
+      // 타이틀 바
+      sumSlide.addText('🏭 아암센터 면적 관리  —  전체 면적 현황 요약', {
+        x: 0, y: 0, w: SLIDE_W, h: 0.43,
+        fill: { color: '1A3A5C' },
+        line: { type: 'none' },
+        fontSize: 16, bold: true, color: 'FFFFFF',
+        valign: 'middle',
+        inset: 0.12,
+      });
+
+      // 테이블 구성
+      const floorShortLabels = { '1F':'1F 전체', '2F':'2F 전체', '2-2F':'2F 메자닌', '4F':'4F 전체', '4-2F':'4F 메자닌' };
+      const isMez = fk => fk === '2-2F' || fk === '4-2F';
+
+      // 슬라이드 폭에 맞춘 컬럼 너비 (inches). 합계 12.7in = IMG_W 이내
+      const COL_CLR  = 0.18;  // 회사 색상 표시
+      const COL_CO   = 1.82;  // 회사명 (COL_CLR 만큼 줄임)
+      const COL_FL   = 1.4;   // 층별 (×5 = 7.0in)
+      const COL_GITA = 1.1;   // 기타
+      const COL_EX   = 1.1;   // 그외
+      const COL_TOTAL= 1.5;   // 합계
+      const colWArr = [COL_CLR, COL_CO, ...FLOOR_ORDER.map(() => COL_FL), COL_GITA, COL_EX, COL_TOTAL];
+
+      const totalRows = activeCos.length + 2;        // 헤더 + 데이터행 + 합계행
+      const availH    = SLIDE_H - 0.55 - 0.28;       // tableY=0.55, 하단 여백 0.28
+      const ROW_H     = Math.min(0.45, availH / totalRows);
+      const FS_HDR    = ROW_H < 0.30 ? 7 : 9;
+      const FS_DAT    = ROW_H < 0.30 ? 8 : 10;
+      const FS_TOT    = FS_DAT;
+
+      const hStyle = (bg) => ({
+        bold: true, color: 'FFFFFF', fill: bg || '2D5A8E',
+        align: 'center', fontSize: FS_HDR, valign: 'middle',
+        margin: [2, 4, 2, 4],
+      });
+      const cStyle = (opts) => ({
+        color: '1A1A1A', fill: 'FFFFFF',
+        fontSize: FS_DAT, valign: 'middle',
+        margin: [2, 6, 2, 6],
+        ...opts,
+      });
+      const totalStyle = (opts) => ({
+        bold: true, color: '1A3A5C', fill: 'DDE6F0',
+        fontSize: FS_TOT, valign: 'middle',
+        margin: [2, 6, 2, 6],
+        ...opts,
+      });
+
+      // 헤더 행
+      const headerRow = [
+        { text: '', options: hStyle('1A3A5C') },
+        { text: '회사', options: hStyle('1A3A5C') },
+        ...FLOOR_ORDER.map(fk => ({ text: floorShortLabels[fk] + '\n(실/계약)', options: hStyle(isMez(fk) ? '3D6B9E' : '2D5A8E') })),
+        { text: '기타\n(실/계약)', options: hStyle('2E7D52') },
+        { text: '그외', options: hStyle('5A6E8A') },
+        { text: '합계\n(실/계약)', options: hStyle('0F2A46') },
+      ];
+
+      // 데이터 행
+      const colTotals = { gita: 0, gitaC: 0, extras: 0, grand: 0, grandC: 0 };
+      const colFloorTotals = {};
+      const colFloorContractTotals = {};
+      FLOOR_ORDER.forEach(fk => { colFloorTotals[fk] = 0; colFloorContractTotals[fk] = 0; });
+
+      const fmtPy = v => v > 0 ? Math.round(v) + '평' : '—';
+      const fmtDual = (realPy, cpyVal) => {
+        if (realPy <= 0) return '—';
+        return '실 ' + Math.round(realPy) + '평\n계 ' + Math.round(cpyVal) + '평';
+      };
+
+      const dataRows = activeCos.map((co, idx) => {
+        const rowBg = idx % 2 === 1 ? 'F4F7FB' : 'FFFFFF';
+        let grand = 0;
+        let grandC = 0;
+        const floorCells = FLOOR_ORDER.map(fk => {
+          const mm2 = allFloorAreas[fk][co.id] || 0;
+          const pyVal = mm2 / 3.3e6;
+          const cpyVal = pyVal > 0 ? contractPy(fk, pyVal) : 0;
+          colFloorTotals[fk] += pyVal;
+          colFloorContractTotals[fk] += cpyVal;
+          grand += pyVal;
+          grandC += cpyVal;
+          return {
+            text: fmtDual(pyVal, cpyVal),
+            options: cStyle({ align: 'right', fill: rowBg, color: pyVal > 0 ? '1A1A1A' : 'BBBBBB', fontSize: FS_DAT - 1 }),
+          };
+        });
+        const gitaActual = (co.gita||{}).actualPy || 0;
+        const gitaC = gitaContractPy(co);
+        colTotals.gita += gitaActual;
+        colTotals.gitaC += gitaC;
+        grand += gitaActual;
+        grandC += gitaC;
+        const extrasPy = (co.extras||[]).reduce((s, ex) => s + (ex.py||0), 0);
+        colTotals.extras += extrasPy;
+        grand += extrasPy;
+        grandC += extrasPy;
+        colTotals.grand += grand;
+        colTotals.grandC += grandC;
+        return [
+          { text: '', options: cStyle({ fill: co.color.replace('#',''), align: 'center' }) },
+          { text: co.name, options: cStyle({ align: 'left', fill: rowBg, bold: true }) },
+          ...floorCells,
+          { text: fmtDual(gitaActual, gitaC), options: cStyle({ align: 'right', fill: rowBg, color: gitaActual > 0 ? '1A1A1A' : 'BBBBBB', fontSize: FS_DAT - 1 }) },
+          { text: fmtPy(extrasPy), options: cStyle({ align: 'right', fill: rowBg, color: extrasPy > 0 ? '1A1A1A' : 'BBBBBB' }) },
+          { text: '실 ' + Math.round(grand) + '평\n계 ' + Math.round(grandC) + '평', options: cStyle({ align: 'right', fill: rowBg, bold: true, color: '0F2A46', fontSize: FS_DAT - 1 }) },
+        ];
+      });
+
+      // 합계 행
+      const sumRow = [
+        { text: '', options: totalStyle({ align: 'center' }) },
+        { text: '합계', options: totalStyle({ align: 'center' }) },
+        ...FLOOR_ORDER.map(fk => ({
+          text: colFloorTotals[fk] > 0 ? '실 ' + Math.round(colFloorTotals[fk]) + '평\n계 ' + Math.round(colFloorContractTotals[fk]) + '평' : '—',
+          options: totalStyle({ align: 'right', color: colFloorTotals[fk] > 0 ? '1A3A5C' : 'BBBBBB', fontSize: FS_TOT - 1 }),
+        })),
+        { text: colTotals.gita > 0 ? '실 ' + Math.round(colTotals.gita) + '평\n계 ' + Math.round(colTotals.gitaC) + '평' : '—', options: totalStyle({ align: 'right', fontSize: FS_TOT - 1 }) },
+        { text: fmtPy(colTotals.extras), options: totalStyle({ align: 'right' }) },
+        { text: '실 ' + Math.round(colTotals.grand) + '평\n계 ' + Math.round(colTotals.grandC) + '평', options: totalStyle({ align: 'right', color: '0F2A46', fontSize: FS_TOT - 1 }) },
+      ];
+
+      sumSlide.addTable([headerRow, ...dataRows, sumRow], {
+        x: MARGIN, y: 0.55,
+        colW: colWArr,
+        rowH: ROW_H,
+        border: { pt: 0.8, color: 'B8C8DC' },
+      });
+
+      // 단위 안내
+      sumSlide.addText('단위: 평 (1평 = 3.3m²)', {
+        x: MARGIN, y: SLIDE_H - 0.24, w: SLIDE_W - MARGIN * 2, h: 0.2,
+        fontSize: 10, color: '718096', align: 'right',
+      });
+    }
+
+    await pptx.writeFile({ fileName: '물류센터_평수현황.pptx' });
+  } catch(e) {
+    alert('PPT 생성 오류: ' + e.message);
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📥 PPT';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+loadState();
+buildTabs();
+renderCompanyList();
+renderFloor();
+renderSummary();
+
+window.addEventListener('resize', () => { renderFloor(); });
+</script>
+
+<!-- PPT 요약표 위치 설정 모달 -->
+<div class="ppt-pos-overlay" id="pptPosOverlay">
+  <div class="ppt-pos-box">
+    <div class="ppt-pos-header">
+      📍 PPT 요약표 위치 설정
+      <div class="ph-actions">
+        <button onclick="resetPPTTablePos()">초기화</button>
+        <button onclick="closePPTPos()">취소</button>
+        <button onclick="confirmPPTGenerate()" style="background:rgba(255,165,0,0.4);">📥 PPT 생성</button>
+      </div>
+    </div>
+    <div class="ppt-pos-body">
+      <p class="ppt-pos-hint">요약표를 드래그하여 원하는 위치로 이동 후 PPT를 생성하세요. 모든 층 슬라이드에 동일하게 적용됩니다.</p>
+      <div class="ppt-slide-preview" id="pptSlidePreview">
+        <div class="ppt-table-handle" id="pptTableHandle"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 단계 11: 요약 전용 모달 -->
+<div class="summary-modal-overlay" id="summaryModalOverlay" onclick="handleModalOverlayClick(event)">
+  <div class="summary-modal-box">
+    <div class="summary-modal-header">
+      📊 전체 층별 회사별 요약 현황
+      <div class="mh-actions">
+        <button onclick="window.print()">🖨 인쇄</button>
+        <button onclick="closeSummaryModal()">✕ 닫기</button>
+      </div>
+    </div>
+    <div class="summary-modal-body" id="summaryModalBody"></div>
+  </div>
+</div>
+</body>
+</html>
